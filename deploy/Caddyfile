@@ -1,0 +1,11 @@
+libros.alexvyumes-dev.com {
+	root * /srv/web
+	encode gzip
+	try_files {path} /index.html
+	file_server
+}
+
+apilibros.alexvyumes-dev.com {
+	encode gzip
+	reverse_proxy api:3000
+}
