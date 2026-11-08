@@ -1,12 +1,96 @@
 export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
+const TOKEN_KEY = 'libros.token';
+
+export type Role = 'ADMIN' | 'USER';
+
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: Role;
+  active: boolean;
+  createdAt: string;
+}
+
 export interface HealthReport {
   status: 'ok' | 'error';
   database: 'up' | 'down';
 }
 
-export async function fetchHealth(): Promise<HealthReport> {
-  const response = await fetch(`${API_URL}/health`);
-  const body = (await response.json()) as HealthReport;
-  return body;
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+export function getStoredToken(): string | null {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function storeToken(token: string | null): void {
+  try {
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+  } catch {
+    return;
+  }
+}
+
+let onUnauthorized: (() => void) | null = null;
+
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  onUnauthorized = handler;
+}
+
+function extractMessage(body: unknown, fallback: string): string {
+  if (typeof body === 'object' && body !== null && 'message' in body) {
+    const message = (body as { message: unknown }).message;
+    if (Array.isArray(message)) return message.join('. ');
+    if (typeof message === 'string') return message;
+  }
+  return fallback;
+}
+
+export async function request<T>(
+  path: string,
+  options: { method?: string; body?: unknown; auth?: boolean } = {},
+): Promise<T> {
+  const { method = 'GET', body, auth = true } = options;
+  const headers: Record<string, string> = {};
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  const token = getStoredToken();
+  if (auth && token) headers.Authorization = `Bearer ${token}`;
+
+  const response = await fetch(`${API_URL}${path}`, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  if (response.status === 401 && auth) {
+    onUnauthorized?.();
+  }
+  if (!response.ok) {
+    const payload: unknown = await response.json().catch(() => null);
+    throw new ApiError(response.status, extractMessage(payload, `Request failed (${response.status})`));
+  }
+  if (response.status === 204) {
+    return undefined as T;
+  }
+  return (await response.json()) as T;
+}
+
+export function fetchHealth(): Promise<HealthReport> {
+  return request<HealthReport>('/health', { auth: false });
 }
