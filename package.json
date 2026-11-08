@@ -1,0 +1,23 @@
+{
+  "name": "libros",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "db:up": "docker compose -f deploy/docker-compose.dev.yml up -d",
+    "db:down": "docker compose -f deploy/docker-compose.dev.yml down",
+    "dev": "pnpm db:up && pnpm -r --parallel --filter \"./apps/*\" run dev",
+    "build": "pnpm -r run build",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "eslint apps",
+    "test": "pnpm -r --if-present run test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.72.1"
+  }
+}
