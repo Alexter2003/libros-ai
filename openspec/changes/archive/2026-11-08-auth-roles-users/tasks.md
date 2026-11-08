@@ -29,8 +29,8 @@
 ## 5. Deployment and documentation
 
 - [x] 5.1 Update the README with the new variables, the bootstrap admin behaviour and the manual server step. Manual check: the documented variable list matches `.env.example`.
-- [ ] 5.2 Add `JWT_SECRET`, `JWT_EXPIRES_IN`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` to `/opt/libros/.env` on Lightsail, push to `main` and confirm the pipeline is green. Manual check: the deploy workflow succeeds and `https://apilibros.alexvyumes-dev.com/health` responds. Captura de evidencia: green workflow run.
-- [ ] 5.3 Verify on production: log in as the bootstrap admin on `https://libros.alexvyumes-dev.com`, create a USER, log in as that user and confirm the restricted menu. Manual check: the full flow works over HTTPS. Captura de evidencia: production login and the USER menu.
+- [x] 5.2 Add `JWT_SECRET`, `JWT_EXPIRES_IN`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` to `/opt/libros/.env` on Lightsail, push to `main` and confirm the pipeline is green. Manual check: the deploy workflow succeeds and `https://apilibros.alexvyumes-dev.com/health` responds. Captura de evidencia: green workflow run.
+- [x] 5.3 Verify on production: log in as the bootstrap admin on `https://libros.alexvyumes-dev.com`, create a USER, log in as that user and confirm the restricted menu. Manual check: the full flow works over HTTPS. Captura de evidencia: production login and the USER menu.
 
 ## Workflow follow-up
 
