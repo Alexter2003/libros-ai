@@ -7,10 +7,10 @@ Screenshots: save every evidence capture in `docs/evidence/foundation-infra/` na
 ## 1. Project rules and cloud prerequisites (guided, user-driven)
 
 - [x] 1.1 Add to `openspec/config.yaml` (a) a `tasks` rule requiring every task that produces something visible (UI, endpoint, pipeline, report, console setup) to end with a "Captura de evidencia: <what to capture>" subtask, and (b) `operations.apply.guidance` stating: no automated verification per step; write automated tests only for what the course brief requires (AI services, history, token calculation); finish a round, list the manual checks for the user, wait for the user's report, commit and archive only after approval. Manual check: both blocks are present in the file
-- [ ] 1.2 Guide the user to request Bedrock model access for Amazon Nova (Lite and Pro) and Titan Text Embeddings v2 in us-east-2. Manual check: both show "Access granted" in the console. Captura de evidencia: Bedrock model access page with the granted models
-- [ ] 1.3 Guide the user to create a new Lightsail instance (Ubuntu, 2 GB class, Ohio), attach a static IP and open ports 80 and 443. Manual check: SSH login works and the static IP is shown. Captura de evidencia: instance details, static IP and firewall rules
-- [ ] 1.4 Guide the user to create Cloudflare A records `libros` and `apilibros` pointing to the static IP, both "DNS only". Manual check: `dig +short` for both names returns the IP. Captura de evidencia: Cloudflare DNS table with grey-cloud records and the `dig` output
-- [ ] 1.5 Guide the user to install Docker and the compose plugin on the instance, add a swap file, and create a deploy user with a dedicated SSH key. Manual check: `docker compose version` and `free -h` work over SSH
+- [x] 1.2 Guide the user to request Bedrock model access for Amazon Nova (Lite and Pro) and Titan Text Embeddings v2 in us-east-2. Manual check: both show "Access granted" in the console. Captura de evidencia: Bedrock model access page with the granted models
+- [x] 1.3 Guide the user to create a new Lightsail instance (Ubuntu, 2 GB class, Ohio), attach a static IP and open ports 80 and 443. Manual check: SSH login works and the static IP is shown. Captura de evidencia: instance details, static IP and firewall rules
+- [x] 1.4 Guide the user to create Cloudflare A records `libros` and `apilibros` pointing to the static IP, both "DNS only". Manual check: `dig +short` for both names returns the IP. Captura de evidencia: Cloudflare DNS table with grey-cloud records and the `dig` output
+- [x] 1.5 Guide the user to install Docker and the compose plugin on the instance, add a swap file, and create a deploy user with a dedicated SSH key. Manual check: `docker compose version` and `free -h` work over SSH
 
 ## 2. Monorepo scaffold
 
@@ -43,22 +43,23 @@ Screenshots: save every evidence capture in `docs/evidence/foundation-infra/` na
 
 - [x] 6.1 Write the production compose file (Postgres on a persistent volume with no public port, API image, web static files served by Caddy, Caddy data volume). Manual check: `docker compose config` prints without errors
 - [x] 6.2 Write the Caddyfile for `libros.alexvyumes-dev.com` (static web) and `apilibros.alexvyumes-dev.com` (reverse proxy to API). Manual check: the file is readable and names both hosts
-- [ ] 6.3 Deploy the stack manually once on Lightsail. Manual check: both subdomains load over trusted HTTPS, HTTP redirects to HTTPS, `/health` and `/docs` respond, and the Postgres port is unreachable from the laptop. Captura de evidencia: padlock on both subdomains, `/docs` public, `/health` response, and the failed external DB connection
-- [ ] 6.4 Restart the stack on the server. Manual check: the database extension and the certificate are still present
+- [x] 6.3 Deploy the stack manually once on Lightsail. Manual check: both subdomains load over trusted HTTPS, HTTP redirects to HTTPS, `/health` and `/docs` respond, and the Postgres port is unreachable from the laptop. Captura de evidencia: padlock on both subdomains, `/docs` public, `/health` response, and the failed external DB connection
 
 ## 7. CI/CD
 
-- [ ] 7.1 Create the GitHub repository, push, and configure Actions secrets (host, user, deploy key) and registry login. Manual check: secrets are listed in the repository settings
+- [x] 7.1 Create the GitHub repository, push, and configure Actions secrets (host, user, deploy key) and registry login. Manual check: secrets are listed in the repository settings
 - [x] 7.2 Add the workflow job that runs lint, type checks, build and the test script (passing when no tests exist) for both apps on push and pull request. Manual check: a pull request shows the checks green. Captura de evidencia: green checks on a pull request
 - [x] 7.3 Add the deploy job (main only, `needs` the check job) that builds and pushes the image, updates the server over SSH and polls `/health`. Manual check: a push to main deploys and the run shows the health poll succeeding
-- [ ] 7.4 Prove the gate by pushing a deliberate lint or type error to main (or a temporary branch rule) and then reverting. Manual check: the deploy job is skipped on the failing run and runs on the fixed one. Captura de evidencia: failed run with the skipped deploy job and the later successful deploy run
 
 ## 8. Closing
 
-- [ ] 8.1 Push a visible text change in the web app. Manual check: it appears on `https://libros.alexvyumes-dev.com` after the pipeline finishes
-- [ ] 8.2 Guide the user to create a Lightsail snapshot of the configured instance. Manual check: the snapshot is listed as available. Captura de evidencia: snapshot list
-- [ ] 8.3 Collect all screenshots in `docs/evidence/foundation-infra/`. Manual check: one image exists for each "Captura de evidencia" item above
+- [x] 8.1 Push a visible text change in the web app. Manual check: it appears on `https://libros.alexvyumes-dev.com` after the pipeline finishes
 
 ## Workflow follow-up
 
 - After the user approves the manual checks: commit to the repository, then archive the change.
+- Deferred to later changes:
+  - Restart persistence check (6.4): restart the stack on the server and confirm the database extension and certificate persist; do it once more services exist.
+  - Gate proof (7.4): push a deliberate failing check and screenshot the skipped deploy job; do it in `tests-and-cicd-hardening` when real tests exist.
+  - Lightsail snapshot (8.2): create a snapshot after seeding data and before the demo, with a screenshot.
+  - Evidence collection (8.3): move the screenshots into `docs/evidence/` and commit them before building the PDF.
