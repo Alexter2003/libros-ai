@@ -1,0 +1,23 @@
+schema: spec-driven
+
+context: |
+  Course final project due 10 November: books and comics web app with a RAG chatbot and two AI agents.
+  Stack: pnpm monorepo (apps/api NestJS + Prisma, apps/web Vite + React), PostgreSQL + pgvector,
+  AWS Bedrock (Nova, Titan Text Embeddings v2), one AWS Lightsail instance with Docker Compose and Caddy.
+  Domains: libros.alexvyumes-dev.com (web), apilibros.alexvyumes-dev.com (API, public Swagger at /docs).
+  Chat replies to the user in Spanish; code, comments and commit messages in English.
+  Time is the main constraint: keep scope to the minimum that satisfies the course brief.
+
+rules:
+  tasks:
+    - 'Every task that produces something visible (UI, endpoint, pipeline, report, console setup) must end with a "Captura de evidencia: <what to capture>" subtask or clause, to build the PDF evidence.'
+    - 'Each task states a "Manual check" for the user instead of an automated verification.'
+    - 'Automated tests are only for what the course brief requires (AI services, conversation history register/query, token consumption calculation).'
+
+operations:
+  apply:
+    guidance:
+      - 'Do not run verification commands or write tests after each task.'
+      - 'Write automated tests only for what the course brief requires (AI services, history, token calculation), minimal and with Bedrock mocked.'
+      - 'After finishing a round, list the manual checks for the user and remind them of the evidence screenshots.'
+      - 'Wait for the user''s report, fix reported problems, and commit and archive only after the user approves.'
