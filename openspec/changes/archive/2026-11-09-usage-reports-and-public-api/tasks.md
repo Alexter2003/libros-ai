@@ -27,4 +27,4 @@
 
 ## 5. Release
 
-- [ ] 5.1 Run lint, typecheck and tests locally, then after deploy verify the migration applied and create the production API key for Power BI. Manual check: the production `/reports/usage` answers 200 with the key. Captura de evidencia: production report response with the key.
+- [x] 5.1 Run lint, typecheck and tests locally, then after deploy verify the migration applied and create the production API key for Power BI. Manual check: the production `/reports/usage` answers 200 with the key. Captura de evidencia: production report response with the key.
