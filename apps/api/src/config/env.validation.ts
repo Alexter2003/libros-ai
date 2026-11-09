@@ -57,6 +57,10 @@ export class EnvironmentVariables {
   @IsOptional()
   @IsString()
   BEDROCK_MODEL_ID?: string;
+
+  @IsOptional()
+  @IsString()
+  BEDROCK_EMBEDDING_MODEL_ID?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {

@@ -12,7 +12,9 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
+import { UserResponse } from '../users/user.response';
 import { CreateItemDto } from './dto/create-item.dto';
 import { ListItemsQuery } from './dto/list-items.query';
 import { UpdateItemDto } from './dto/update-item.dto';
@@ -41,8 +43,8 @@ export class ItemsController {
   @Post()
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Create an item (admin)' })
-  async create(@Body() dto: CreateItemDto): Promise<ItemResponse> {
-    return toItemResponse(await this.items.create(dto));
+  async create(@Body() dto: CreateItemDto, @CurrentUser() actor: UserResponse): Promise<ItemResponse> {
+    return toItemResponse(await this.items.create(dto, actor.id));
   }
 
   @Patch(':id')
@@ -51,8 +53,9 @@ export class ItemsController {
   async update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateItemDto,
+    @CurrentUser() actor: UserResponse,
   ): Promise<ItemResponse> {
-    return toItemResponse(await this.items.update(id, dto));
+    return toItemResponse(await this.items.update(id, dto, actor.id));
   }
 
   @Delete(':id')

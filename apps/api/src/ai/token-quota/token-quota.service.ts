@@ -42,7 +42,7 @@ export class TokenQuotaService {
     }
   }
 
-  async record(userId: string, service: Pick<AiService, 'id' | 'name'>, usage: TokenUsage): Promise<void> {
+  async record(userId: string, service: { id: AiService['id'] | null; name: string }, usage: TokenUsage): Promise<void> {
     await this.prisma.usageEvent.create({
       data: {
         userId,

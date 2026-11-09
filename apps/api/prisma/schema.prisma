@@ -25,7 +25,8 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  usageEvents UsageEvent[]
+  usageEvents  UsageEvent[]
+  chatSessions ChatSession[]
 }
 
 enum Kind {
@@ -45,6 +46,7 @@ model Item {
   coverUrl    String?
   series      String?
   issueNumber Int?
+  embedding   Unsupported("vector(1024)")?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -77,4 +79,36 @@ model UsageEvent {
   createdAt    DateTime   @default(now())
 
   @@index([userId, createdAt])
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+model ChatSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages ChatMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model ChatMessage {
+  id           String      @id @default(uuid())
+  sessionId    String
+  session      ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role         ChatRole
+  content      String
+  sources      Json?
+  inputTokens  Int?
+  outputTokens Int?
+  createdAt    DateTime    @default(now())
+
+  @@index([sessionId, createdAt])
 }
