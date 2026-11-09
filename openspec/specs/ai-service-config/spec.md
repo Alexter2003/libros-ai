@@ -1,7 +1,7 @@
 # ai-service-config Specification
 
 ## Purpose
-TBD - created by archiving change token-metering-gateway. Update Purpose after archive.
+Defines how administrators manage the catalog of AI services (model, provider, enabled flag, generation parameters) that the gateway can call, and what regular users may see of it.
 
 ## Requirements
 

@@ -1,7 +1,7 @@
 # bedrock-generation Specification
 
 ## Purpose
-TBD - created by archiving change token-metering-gateway. Update Purpose after archive.
+Defines the gateway endpoint that generates text through Amazon Bedrock for an enabled AI service, including failure behaviour and the rule that configuration secrets never appear in responses.
 
 ## Requirements
 

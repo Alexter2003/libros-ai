@@ -1,7 +1,7 @@
 # token-quota Specification
 
 ## Purpose
-TBD - created by archiving change token-metering-gateway. Update Purpose after archive.
+Defines per-user token limits, how every completed model call is recorded, and how the system refuses calls once a user has consumed their limit.
 
 ## Requirements
 
