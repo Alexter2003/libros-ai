@@ -46,7 +46,7 @@ Users log in with email and password and receive a JWT access token (`Authorizat
 
 ### Demo data
 
-`pnpm --filter api db:seed` loads about two dozen titles from `apps/api/prisma/seed-data.ts`. It upserts by title, author and kind: new titles are created, existing ones are refreshed to the demo values (so manual edits to a demo row are overwritten), and items created through the app are never touched. Run it as many times as needed. On the server, from `/opt/libros`: `docker compose exec api pnpm db:seed`.
+`pnpm --filter api db:seed` loads about 55 titles (eight of them series with three numbered volumes) from `apps/api/prisma/seed-data.ts`. It upserts by title, author and kind: new titles are created, existing ones are refreshed to the demo values (so manual edits to a demo row are overwritten), and items created through the app are never touched. Run it as many times as needed. On the server, from `/opt/libros`: `docker compose exec api pnpm db:seed`.
 
 ### Covers
 
@@ -102,3 +102,13 @@ The chatbot answers only from catalog items. Each item has a 1024-dimension Tita
 Embeddings refresh automatically when an item is created or its title, author, kind, genre, year, series or synopsis change; if Bedrock fails the item is still saved and the embedding stays empty until the next reindex. Embedding calls are stored as usage of the service `Titan Embeddings` and count in the consumption total. The seed does not call Bedrock: after seeding a new environment, log in as admin and run `POST /ai/reindex` once.
 
 Design reference: `DESIGN.md`.
+
+## AI agents
+
+Two task-focused agents run on top of the catalog and go through the same gateway as the chat, so service on/off, token limits and usage recording apply. Both are authenticated and take an enabled `serviceId`; the web screen is `/agents`.
+
+| Endpoint | What it does |
+|---|---|
+| `POST /agents/recommend` `{description, serviceId}` | Retrieves the 8 most similar items (same embeddings and minimum similarity as the chat), asks the model to pick up to 3 and write a short Spanish reason for each. Ids the model returns that were not candidates are discarded, and unparseable output falls back to the top candidates. Nothing relevant means an empty list and no generation tokens. |
+| `POST /agents/reading-order` `{query, serviceId}` | Resolves the series by name, then by title, then by embedding similarity. The order is computed in code (issue number, then year, then title); the model only writes a short explanation of the already sorted list. |
+
