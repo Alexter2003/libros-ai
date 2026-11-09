@@ -91,7 +91,7 @@ The model must also be available to the account in the Bedrock console. The Tita
 
 ## Catalog chatbot (RAG)
 
-The chatbot answers only from catalog items. Each item has a 1024-dimension Titan Text Embeddings v2 vector (pgvector column `Item.embedding`). A question is embedded, the 5 closest items by cosine similarity are retrieved, and the answer is generated through the AI gateway, so the on/off switch and the token limit apply. If no item reaches the minimum similarity (`MIN_SIMILARITY` in `apps/api/src/chat/rag.constants.ts`, currently 0.30) the answer is "not enough information" and the model is not called.
+The chatbot answers only from catalog items. Each item has a 1024-dimension Titan Text Embeddings v2 vector (pgvector column `Item.embedding`). A question is embedded, the 5 closest items by cosine similarity are retrieved, and the answer is generated through the AI gateway, so the on/off switch and the token limit apply. If no item reaches the minimum similarity (`MIN_SIMILARITY` in `apps/api/src/chat/rag.constants.ts`, currently 0.18) the answer is "not enough information" and the model is not called.
 
 | Endpoint | Access | Notes |
 |---|---|---|

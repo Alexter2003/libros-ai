@@ -1,5 +1,5 @@
 export const RETRIEVAL_LIMIT = 5;
-export const MIN_SIMILARITY = 0.3;
+export const MIN_SIMILARITY = 0.18;
 export const HISTORY_WINDOW = 6;
 export const SYNOPSIS_MAX_CHARS = 600;
 export const SESSION_TITLE_MAX_CHARS = 80;
