@@ -3,12 +3,15 @@
   "compilerOptions": {
     "module": "nodenext",
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "incremental": true,
     "sourceMap": true
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*",
+    "test/**/*"
+  ]
 }

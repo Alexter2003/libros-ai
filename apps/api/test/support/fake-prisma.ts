@@ -1,5 +1,5 @@
 import { AiService } from '@prisma/client';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../src/prisma/prisma.service';
 
 interface UserRow {
   id: string;

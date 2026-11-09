@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { AiService, Prisma } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { CreateAiServiceDto } from './dto/create-ai-service.dto';
 import { UpdateAiServiceDto } from './dto/update-ai-service.dto';
 

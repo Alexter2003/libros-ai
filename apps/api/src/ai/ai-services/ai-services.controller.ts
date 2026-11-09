@@ -12,9 +12,9 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { UserResponse } from '../users/user.response';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { UserResponse } from '../../users/user.response';
 import { AiServiceResponse, toAiServiceResponse } from './ai-service.response';
 import { AiServicesService } from './ai-services.service';
 import { CreateAiServiceDto } from './dto/create-ai-service.dto';

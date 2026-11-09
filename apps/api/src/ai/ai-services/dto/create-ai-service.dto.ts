@@ -11,7 +11,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { trimString } from '../../items/dto/item-fields';
+import { trimString } from '../../../items/dto/item-fields';
 
 export const SUPPORTED_PROVIDERS = ['bedrock'] as const;
 

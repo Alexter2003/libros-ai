@@ -1,11 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { UserResponse } from '../users/user.response';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import { UserResponse } from '../../users/user.response';
 import { GenerateDto } from './dto/generate.dto';
 import { GatewayService } from './gateway.service';
-import { QuotaStatus, TokenQuotaService } from './token-quota.service';
+import { QuotaStatus, TokenQuotaService } from '../token-quota/token-quota.service';
 
 class GenerateResponse {
   @ApiProperty()

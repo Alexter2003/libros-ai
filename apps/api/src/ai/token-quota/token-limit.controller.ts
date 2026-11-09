@@ -1,8 +1,8 @@
 import { Body, Controller, Param, ParseUUIDPipe, Patch } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { UserResponse, toUserResponse } from '../users/user.response';
+import { Roles } from '../../auth/decorators/roles.decorator';
+import { UserResponse, toUserResponse } from '../../users/user.response';
 import { SetTokenLimitDto } from './dto/set-token-limit.dto';
 import { TokenQuotaService } from './token-quota.service';
 

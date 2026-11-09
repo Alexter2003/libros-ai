@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
-import { AiServicesController } from './ai-services.controller';
-import { AiServicesService } from './ai-services.service';
-import { BedrockModelProvider } from './bedrock-model.provider';
-import { GatewayController } from './gateway.controller';
-import { GatewayService } from './gateway.service';
-import { ModelProvider } from './model-provider';
-import { TokenLimitController } from './token-limit.controller';
-import { TokenQuotaService } from './token-quota.service';
+import { AiServicesController } from './ai-services/ai-services.controller';
+import { AiServicesService } from './ai-services/ai-services.service';
+import { BedrockModelProvider } from './providers/bedrock-model.provider';
+import { GatewayController } from './gateway/gateway.controller';
+import { GatewayService } from './gateway/gateway.service';
+import { ModelProvider } from './providers/model-provider';
+import { TokenLimitController } from './token-quota/token-limit.controller';
+import { TokenQuotaService } from './token-quota/token-quota.service';
 
 @Module({
   controllers: [AiServicesController, GatewayController, TokenLimitController],

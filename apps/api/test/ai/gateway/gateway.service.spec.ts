@@ -1,10 +1,15 @@
+import {
+  HttpException,
+  HttpStatus,
+  ServiceUnavailableException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { HttpException, HttpStatus, ServiceUnavailableException } from '@nestjs/common';
-import { AiServicesService } from './ai-services.service';
-import { GatewayService } from './gateway.service';
-import { ModelProvider } from './model-provider';
-import { FakePrisma } from './testing/fake-prisma';
-import { TokenQuotaService } from './token-quota.service';
+import { AiServicesService } from '../../../src/ai/ai-services/ai-services.service';
+import { GatewayService } from '../../../src/ai/gateway/gateway.service';
+import { ModelProvider } from '../../../src/ai/providers/model-provider';
+import { TokenQuotaService } from '../../../src/ai/token-quota/token-quota.service';
+import { FakePrisma } from '../../support/fake-prisma';
 
 async function setup(limit: number | null, generate: ModelProvider['generate']) {
   const prisma = new FakePrisma();
@@ -13,10 +18,25 @@ async function setup(limit: number | null, generate: ModelProvider['generate']) 
   const service = await services.create({ name: 'Nova Lite', modelId: 'model-1' });
   const provider: ModelProvider = { generate };
   const gateway = new GatewayService(services, new TokenQuotaService(prisma.asPrisma()), provider);
-  return { prisma, service, gateway };
+  return { prisma, services, service, gateway };
 }
 
-describe('usage recording', () => {
+describe('gateway: service availability', () => {
+  it('refuses calls to a disabled service without invoking the model', async () => {
+    const generate = vi
+      .fn<ModelProvider['generate']>()
+      .mockResolvedValue({ text: 'hi', inputTokens: 1, outputTokens: 1 });
+    const { services, service, gateway } = await setup(null, generate);
+    await services.update(service.id, { enabled: false });
+
+    await expect(gateway.generate('u1', { serviceId: service.id, prompt: 'hello' })).rejects.toBeInstanceOf(
+      UnprocessableEntityException,
+    );
+    expect(generate).not.toHaveBeenCalled();
+  });
+});
+
+describe('gateway: usage recording', () => {
   it('stores exactly one event with the tokens reported by the model', async () => {
     const generate = vi
       .fn<ModelProvider['generate']>()

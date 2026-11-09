@@ -1,29 +1,17 @@
-import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { ConflictException, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { describe, expect, it, vi } from 'vitest';
-import { ConflictException, UnprocessableEntityException } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { UserResponse } from '../users/user.response';
-import { AiServicesController } from './ai-services.controller';
-import { AiServicesService } from './ai-services.service';
-import { GatewayService } from './gateway.service';
-import { ModelProvider } from './model-provider';
-import { FakePrisma } from './testing/fake-prisma';
-import { TokenQuotaService } from './token-quota.service';
+import { describe, expect, it } from 'vitest';
+import { AiServicesController } from '../../../src/ai/ai-services/ai-services.controller';
+import { AiServicesService } from '../../../src/ai/ai-services/ai-services.service';
+import { RolesGuard } from '../../../src/auth/guards/roles.guard';
+import { UserResponse } from '../../../src/users/user.response';
+import { FakePrisma } from '../../support/fake-prisma';
 
 function setup() {
   const prisma = new FakePrisma();
-  prisma.addUser('u1', null);
   const services = new AiServicesService(prisma.asPrisma());
-  const generate = vi.fn<ModelProvider['generate']>().mockResolvedValue({
-    text: 'hi',
-    inputTokens: 1,
-    outputTokens: 1,
-  });
-  const provider: ModelProvider = { generate };
-  const gateway = new GatewayService(services, new TokenQuotaService(prisma.asPrisma()), provider);
-  return { prisma, services, gateway, generate };
+  return { services };
 }
 
 function contextFor(handler: (...args: never[]) => unknown, role: Role): ExecutionContext {
@@ -48,16 +36,6 @@ describe('AI service management', () => {
     await expect(services.create({ name: 'nova LITE', modelId: 'model-2' })).rejects.toBeInstanceOf(
       ConflictException,
     );
-  });
-
-  it('refuses calls to a disabled service without invoking the model', async () => {
-    const { services, gateway, generate } = setup();
-    const service = await services.create({ name: 'Nova Lite', modelId: 'model-1' });
-    await services.update(service.id, { enabled: false });
-    await expect(gateway.generate('u1', { serviceId: service.id, prompt: 'hello' })).rejects.toBeInstanceOf(
-      UnprocessableEntityException,
-    );
-    expect(generate).not.toHaveBeenCalled();
   });
 
   it('lists only enabled services for regular users', async () => {

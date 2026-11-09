@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsString, IsUUID, MaxLength } from 'class-validator';
-import { trimString } from '../../items/dto/item-fields';
+import { trimString } from '../../../items/dto/item-fields';
 
 export const MAX_PROMPT_LENGTH = 4000;
 

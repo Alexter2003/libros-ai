@@ -1,6 +1,6 @@
 import { HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { AiService, Prisma, User } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { TokenUsage, hasReachedLimit, remainingTokens } from './token-calculation';
 
 export interface QuotaStatus {

@@ -1,9 +1,9 @@
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
-import { AiServicesService } from './ai-services.service';
+import { AiServicesService } from '../ai-services/ai-services.service';
 import { GenerateDto } from './dto/generate.dto';
-import { ModelProvider } from './model-provider';
-import { totalTokens } from './token-calculation';
-import { TokenQuotaService } from './token-quota.service';
+import { ModelProvider } from '../providers/model-provider';
+import { totalTokens } from '../token-quota/token-calculation';
+import { TokenQuotaService } from '../token-quota/token-quota.service';
 
 export interface GatewayResult {
   text: string;
