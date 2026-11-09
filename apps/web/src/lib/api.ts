@@ -13,6 +13,31 @@ export interface User {
   createdAt: string;
 }
 
+export type Kind = 'BOOK' | 'COMIC';
+
+export interface Item {
+  id: string;
+  title: string;
+  author: string;
+  kind: Kind;
+  genre: string;
+  year: number;
+  synopsis: string;
+  isbn: string | null;
+  coverUrl: string | null;
+  series: string | null;
+  issueNumber: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ItemPage {
+  data: Item[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface HealthReport {
   status: 'ok' | 'error';
   database: 'up' | 'down';

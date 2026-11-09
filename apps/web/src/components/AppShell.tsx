@@ -12,10 +12,18 @@ export function AppShell() {
             <Link to="/" className="font-medium text-bone">
               Libros y cómics
             </Link>
+            <Link to="/catalog" className="text-ash hover:text-bone">
+              Catálogo
+            </Link>
             {user?.role === 'ADMIN' && (
-              <Link to="/admin/users" className="text-ash hover:text-bone">
-                Usuarios
-              </Link>
+              <>
+                <Link to="/admin/items" className="text-ash hover:text-bone">
+                  Gestión de catálogo
+                </Link>
+                <Link to="/admin/users" className="text-ash hover:text-bone">
+                  Usuarios
+                </Link>
+              </>
             )}
           </nav>
           <div className="flex items-center gap-4">

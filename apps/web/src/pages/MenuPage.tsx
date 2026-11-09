@@ -34,15 +34,33 @@ export function MenuPage() {
       </p>
 
       <div className="mt-12 grid gap-6 md:grid-cols-2">
+        <Card>
+          <Eyebrow>Catálogo</Eyebrow>
+          <p className="mt-4 text-heading font-medium">Libros y cómics</p>
+          <p className="mt-2 text-body-sm text-ash">Busca, filtra y consulta los títulos disponibles.</p>
+          <Link to="/catalog" className="mt-6 inline-block">
+            <Button>Ver catálogo</Button>
+          </Link>
+        </Card>
         {user?.role === 'ADMIN' && (
-          <Card>
-            <Eyebrow>Administración</Eyebrow>
-            <p className="mt-4 text-heading font-medium">Usuarios</p>
-            <p className="mt-2 text-body-sm text-ash">Crea, edita y desactiva cuentas.</p>
-            <Link to="/admin/users" className="mt-6 inline-block">
-              <Button>Gestionar usuarios</Button>
-            </Link>
-          </Card>
+          <>
+            <Card>
+              <Eyebrow>Administración</Eyebrow>
+              <p className="mt-4 text-heading font-medium">Gestión de catálogo</p>
+              <p className="mt-2 text-body-sm text-ash">Crea, edita y elimina libros y cómics.</p>
+              <Link to="/admin/items" className="mt-6 inline-block">
+                <Button>Gestionar catálogo</Button>
+              </Link>
+            </Card>
+            <Card>
+              <Eyebrow>Administración</Eyebrow>
+              <p className="mt-4 text-heading font-medium">Usuarios</p>
+              <p className="mt-2 text-body-sm text-ash">Crea, edita y desactiva cuentas.</p>
+              <Link to="/admin/users" className="mt-6 inline-block">
+                <Button>Gestionar usuarios</Button>
+              </Link>
+            </Card>
+          </>
         )}
         <Card>
           <Eyebrow>Estado de la API</Eyebrow>
