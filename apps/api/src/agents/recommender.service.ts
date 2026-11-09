@@ -1,12 +1,8 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
-import { AiServicesService } from '../ai/ai-services/ai-services.service';
-import { EmbeddingsService } from '../ai/embeddings/embeddings.service';
+import { Injectable } from '@nestjs/common';
 import { GatewayService } from '../ai/gateway/gateway.service';
-import { TokenQuotaService } from '../ai/token-quota/token-quota.service';
-import { filterRelevant } from '../chat/rag-prompt';
-import { MIN_SIMILARITY } from '../chat/rag.constants';
-import { buildRecommendPrompt, parseRecommendations } from './agent-prompts';
-import { CANDIDATE_LIMIT } from './agents.constants';
+import { runAgentLoop } from './agent-loop';
+import { RECOMMENDER_SYSTEM_PROMPT, buildRecommendPrompt, parseRecommendations } from './agent-prompts';
+import { CatalogToolsService } from './catalog-tools';
 import { RecommendDto } from './dto/recommend.dto';
 
 export interface Recommendation {
@@ -26,37 +22,32 @@ export interface RecommendResult {
 @Injectable()
 export class RecommenderService {
   constructor(
-    private readonly services: AiServicesService,
-    private readonly quota: TokenQuotaService,
-    private readonly embeddings: EmbeddingsService,
     private readonly gateway: GatewayService,
+    private readonly catalog: CatalogToolsService,
   ) {}
 
   async recommend(userId: string, dto: RecommendDto): Promise<RecommendResult> {
-    const service = await this.services.getOrThrow(dto.serviceId);
-    if (!service.enabled) {
-      throw new UnprocessableEntityException('AI service is disabled');
-    }
-    await this.quota.assertWithinQuota(userId);
-
-    const vector = await this.embeddings.embedQuery(userId, dto.description);
-    const candidates = filterRelevant(await this.embeddings.search(vector, CANDIDATE_LIMIT), MIN_SIMILARITY);
-    if (candidates.length === 0) {
-      return { recommendations: [], inputTokens: 0, outputTokens: 0 };
-    }
-
-    const result = await this.gateway.generate(userId, {
-      serviceId: dto.serviceId,
-      prompt: buildRecommendPrompt(candidates, dto.description),
+    const toolkit = this.catalog.toolkit(userId);
+    const loop = await runAgentLoop({
+      step: (messages, tools) =>
+        this.gateway.converse(userId, {
+          serviceId: dto.serviceId,
+          system: RECOMMENDER_SYSTEM_PROMPT,
+          messages,
+          tools,
+        }),
+      tools: [toolkit.searchCatalog, toolkit.getItem],
+      prompt: buildRecommendPrompt(dto.description),
     });
-    const byId = new Map(candidates.map((item) => [item.id, item]));
+
+    const { items, firstSearch } = toolkit.recorder;
     const recommendations: Recommendation[] = [];
-    for (const { id, reason } of parseRecommendations(result.text, candidates)) {
-      const item = byId.get(id);
+    for (const { id, reason } of parseRecommendations(loop.text ?? '', [...items.values()], firstSearch ?? [])) {
+      const item = items.get(id);
       if (item) {
         recommendations.push({ id, title: item.title, author: item.author, kind: item.kind, reason });
       }
     }
-    return { recommendations, inputTokens: result.inputTokens, outputTokens: result.outputTokens };
+    return { recommendations, inputTokens: loop.inputTokens, outputTokens: loop.outputTokens };
   }
 }

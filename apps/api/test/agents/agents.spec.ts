@@ -1,116 +1,79 @@
+import { UnprocessableEntityException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { buildRecommendPrompt, parseRecommendations } from '../../src/agents/agent-prompts';
+import { parseRecommendations } from '../../src/agents/agent-prompts';
 import { GENERIC_REASON, NO_SERIES_EXPLANATION } from '../../src/agents/agents.constants';
-import { sortReadingOrder } from '../../src/agents/reading-order';
+import { CatalogToolsService } from '../../src/agents/catalog-tools';
+import { SeriesEntry, resolveReadingOrder, sortReadingOrder } from '../../src/agents/reading-order';
 import { ReadingOrderService } from '../../src/agents/reading-order.service';
 import { RecommenderService } from '../../src/agents/recommender.service';
 import { AiServicesService } from '../../src/ai/ai-services/ai-services.service';
 import { EmbeddingsService, SimilarItem } from '../../src/ai/embeddings/embeddings.service';
 import { GatewayService } from '../../src/ai/gateway/gateway.service';
-import { ModelProvider } from '../../src/ai/providers/model-provider';
+import { ConversationResult, ModelProvider } from '../../src/ai/providers/model-provider';
 import { TokenQuotaService } from '../../src/ai/token-quota/token-quota.service';
-import { PrismaService } from '../../src/prisma/prisma.service';
+import { StoredItem, fakePrisma, similar, stored } from '../support/catalog-fakes';
+import { fakeProvider } from '../support/fake-model-provider';
 import { FakePrisma } from '../support/fake-prisma';
+import { answerTurn, call, toolTurn } from '../support/model-turns';
 
-function candidate(id: string, score = 0.8): SimilarItem {
-  return {
-    id,
-    title: `Title ${id}`,
-    author: 'Author',
-    kind: 'BOOK',
-    genre: 'Fantasy',
-    year: 2000,
-    series: null,
-    synopsis: 'A story.',
-    score,
-  };
-}
-
-interface StoredItem {
-  id: string;
-  title: string;
-  author: string;
-  kind: string;
-  year: number;
-  series: string | null;
-  issueNumber: number | null;
-}
-
-function fakeItems(items: StoredItem[]): PrismaService {
-  type Filter = { equals?: string; contains?: string };
-  const matches = (value: string | null, filter?: Filter): boolean => {
-    if (!filter || value === null) return false;
-    const lower = value.toLowerCase();
-    if (filter.equals !== undefined) return lower === filter.equals.toLowerCase();
-    return filter.contains !== undefined && lower.includes(filter.contains.toLowerCase());
-  };
-  const find = (where: { series?: string | Filter; title?: Filter }) =>
-    items.filter((item) => {
-      if (typeof where.series === 'string') return item.series === where.series;
-      if (where.series) return matches(item.series, where.series);
-      return matches(item.title, where.title);
-    });
-  return {
-    item: {
-      findFirst: vi.fn(async ({ where }: { where: { series?: Filter; title?: Filter } }) => find(where)[0] ?? null),
-      findMany: vi.fn(async ({ where }: { where: { series: string } }) => find(where)),
-    },
-  } as unknown as PrismaService;
-}
-
-async function setup(options: { search?: SimilarItem[]; text?: string; items?: StoredItem[] } = {}) {
+async function setup(options: { turns: ConversationResult[]; items?: StoredItem[]; search?: SimilarItem[] }) {
   const prisma = new FakePrisma();
   prisma.addUser('u1', null);
   const services = new AiServicesService(prisma.asPrisma());
   const service = await services.create({ name: 'Nova Lite', modelId: 'model-1' });
-  const quota = new TokenQuotaService(prisma.asPrisma());
-  const generate = vi
-    .fn<ModelProvider['generate']>()
-    .mockResolvedValue({ text: options.text ?? 'ok', inputTokens: 30, outputTokens: 10 });
-  const gateway = new GatewayService(services, quota, { generate });
+  const converse = vi.fn<ModelProvider['converse']>();
+  for (const turn of options.turns) converse.mockResolvedValueOnce(turn);
+  const gateway = new GatewayService(services, new TokenQuotaService(prisma.asPrisma()), fakeProvider({ converse }));
   const embeddings = {
     embedQuery: vi.fn().mockResolvedValue([0.1]),
     search: vi.fn().mockResolvedValue(options.search ?? []),
   } as unknown as EmbeddingsService;
-  const recommender = new RecommenderService(services, quota, embeddings, gateway);
-  const reading = new ReadingOrderService(fakeItems(options.items ?? []), services, quota, embeddings, gateway);
-  return { prisma, service, recommender, reading, generate };
+  const catalog = new CatalogToolsService(fakePrisma(options.items ?? []), embeddings);
+  return {
+    prisma,
+    services,
+    service,
+    converse,
+    recommender: new RecommenderService(gateway, catalog),
+    reading: new ReadingOrderService(gateway, catalog),
+  };
 }
 
 describe('parseRecommendations', () => {
-  const candidates = [candidate('a'), candidate('b'), candidate('c'), candidate('d')];
+  const allowed = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }];
 
   it('keeps valid ids with their reasons', () => {
     const text = '{"recommendations":[{"id":"b","reason":"Porque sí"}]}';
-    expect(parseRecommendations(text, candidates)).toEqual([{ id: 'b', reason: 'Porque sí' }]);
+    expect(parseRecommendations(text, allowed, [])).toEqual([{ id: 'b', reason: 'Porque sí' }]);
   });
 
-  it('discards ids that were not candidates and duplicates', () => {
+  it('discards ids that were not returned by a tool and duplicates', () => {
     const text = '{"recommendations":[{"id":"zzz","reason":"x"},{"id":"a","reason":"uno"},{"id":"a","reason":"dos"}]}';
-    expect(parseRecommendations(text, candidates)).toEqual([{ id: 'a', reason: 'uno' }]);
+    expect(parseRecommendations(text, allowed, [])).toEqual([{ id: 'a', reason: 'uno' }]);
   });
 
   it('extracts JSON surrounded by prose and caps at 3', () => {
     const text = `Claro:\n{"recommendations":[${['a', 'b', 'c', 'd'].map((id) => `{"id":"${id}","reason":"r"}`).join(',')}]}\nListo`;
-    expect(parseRecommendations(text, candidates).map((r) => r.id)).toEqual(['a', 'b', 'c']);
+    expect(parseRecommendations(text, allowed, []).map((r) => r.id)).toEqual(['a', 'b', 'c']);
   });
 
-  it('falls back to the top candidates when the output is not valid', () => {
-    expect(parseRecommendations('no json here', candidates)).toEqual(
+  it('falls back to the given items when the output is not valid', () => {
+    expect(parseRecommendations('no json here', allowed, allowed)).toEqual(
       ['a', 'b', 'c'].map((id) => ({ id, reason: GENERIC_REASON })),
     );
-  });
-
-  it('lists candidate ids in the prompt', () => {
-    expect(buildRecommendPrompt(candidates, 'fantasía')).toContain('id: a');
   });
 });
 
 describe('recommender agent', () => {
-  it('returns only candidate items and records usage through the gateway', async () => {
+  const search = [similar('a', 0.8), similar('b', 0.7)];
+
+  it('searches, recommends only items the tools returned and sums the tokens of every call', async () => {
     const { recommender, service, prisma } = await setup({
-      search: [candidate('a'), candidate('b')],
-      text: '{"recommendations":[{"id":"b","reason":"Encaja"},{"id":"ghost","reason":"Inventado"}]}',
+      search,
+      turns: [
+        toolTurn(call('search_catalog', { query: 'fantasía' })),
+        answerTurn('{"recommendations":[{"id":"b","reason":"Encaja"},{"id":"ghost","reason":"Inventado"}]}'),
+      ],
     });
 
     const result = await recommender.recommend('u1', { description: 'fantasía', serviceId: service.id });
@@ -118,19 +81,87 @@ describe('recommender agent', () => {
     expect(result.recommendations).toEqual([
       { id: 'b', title: 'Title b', author: 'Author', kind: 'BOOK', reason: 'Encaja' },
     ]);
-    expect(result).toMatchObject({ inputTokens: 30, outputTokens: 10 });
-    expect(prisma.usage).toHaveLength(1);
+    expect(result).toMatchObject({ inputTokens: 30, outputTokens: 13 });
+    expect(prisma.usage).toHaveLength(2);
   });
 
-  it('skips generation when nothing reaches the minimum similarity', async () => {
-    const { recommender, service, generate } = await setup({ search: [candidate('a', 0.05)] });
+  it('can recommend an item it only read with get_item', async () => {
+    const { recommender, service } = await setup({
+      items: [stored('s1', 'Saga, Vol. 1', 'Saga', 1)],
+      turns: [
+        toolTurn(call('get_item', { id: 's1' })),
+        answerTurn('{"recommendations":[{"id":"s1","reason":"Épica"}]}'),
+      ],
+    });
+
+    const result = await recommender.recommend('u1', { description: 'épica', serviceId: service.id });
+
+    expect(result.recommendations.map((item) => item.id)).toEqual(['s1']);
+  });
+
+  it('falls back to the first search when the final output is not valid', async () => {
+    const { recommender, service } = await setup({
+      search,
+      turns: [toolTurn(call('search_catalog', { query: 'x' })), answerTurn('lo siento')],
+    });
+
+    const result = await recommender.recommend('u1', { description: 'x', serviceId: service.id });
+
+    expect(result.recommendations.map((item) => [item.id, item.reason])).toEqual([
+      ['a', GENERIC_REASON],
+      ['b', GENERIC_REASON],
+    ]);
+  });
+
+  it('returns nothing when no tool found a relevant item, even if the model invents one', async () => {
+    const { recommender, service } = await setup({
+      search: [similar('a', 0.05)],
+      turns: [
+        toolTurn(call('search_catalog', { query: 'nada' })),
+        answerTurn('{"recommendations":[{"id":"a","reason":"x"}]}'),
+      ],
+    });
 
     const result = await recommender.recommend('u1', { description: 'nada', serviceId: service.id });
 
-    expect(result).toEqual({ recommendations: [], inputTokens: 0, outputTokens: 0 });
-    expect(generate).not.toHaveBeenCalled();
+    expect(result.recommendations).toEqual([]);
+  });
+
+  it('returns nothing when the model never searches and invents ids', async () => {
+    const { recommender, service } = await setup({
+      search,
+      turns: [answerTurn('{"recommendations":[{"id":"a","reason":"x"}]}')],
+    });
+
+    const result = await recommender.recommend('u1', { description: 'x', serviceId: service.id });
+
+    expect(result.recommendations).toEqual([]);
+  });
+
+  it('falls back to the first search when the step limit is reached', async () => {
+    const turns = Array.from({ length: 5 }, () => toolTurn(call('search_catalog', { query: 'again' })));
+    const { recommender, service } = await setup({ search, turns });
+
+    const result = await recommender.recommend('u1', { description: 'x', serviceId: service.id });
+
+    expect(result.recommendations.map((item) => item.id)).toEqual(['a', 'b']);
+    expect(result.inputTokens).toBe(50);
+  });
+
+  it('rejects a disabled service before doing any work', async () => {
+    const { recommender, service, services, converse } = await setup({ turns: [] });
+    await services.update(service.id, { enabled: false });
+
+    await expect(recommender.recommend('u1', { description: 'x', serviceId: service.id })).rejects.toBeInstanceOf(
+      UnprocessableEntityException,
+    );
+    expect(converse).not.toHaveBeenCalled();
   });
 });
+
+function entry(id: string, issueNumber: number | null, year = 2000): SeriesEntry {
+  return { id, title: `Title ${id}`, author: 'A', kind: 'COMIC', year, issueNumber };
+}
 
 describe('sortReadingOrder', () => {
   it('orders by issue number, then year, with unnumbered entries last', () => {
@@ -144,38 +175,113 @@ describe('sortReadingOrder', () => {
   });
 });
 
+describe('resolveReadingOrder', () => {
+  const numbered = [entry('3', 3), entry('1', 1), entry('2', 2)];
+
+  it('accepts a proposal that is a permutation and keeps issue order', () => {
+    expect(resolveReadingOrder(numbered, ['1', '2', '3']).map((item) => item.id)).toEqual(['1', '2', '3']);
+  });
+
+  it('falls back to the deterministic order when issue numbers are out of order', () => {
+    expect(resolveReadingOrder(numbered, ['3', '1', '2']).map((item) => item.id)).toEqual(['1', '2', '3']);
+  });
+
+  it('falls back when the proposal misses, repeats or invents volumes', () => {
+    for (const proposal of [['1', '2'], ['1', '1', '2'], ['1', '2', 'ghost']]) {
+      expect(resolveReadingOrder(numbered, proposal).map((item) => item.id)).toEqual(['1', '2', '3']);
+    }
+  });
+
+  it('accepts the model order for volumes without issue numbers', () => {
+    const unnumbered = [entry('a', null, 2001), entry('b', null, 1999)];
+    expect(resolveReadingOrder(unnumbered, ['a', 'b']).map((item) => item.id)).toEqual(['a', 'b']);
+  });
+});
+
 describe('reading-order agent', () => {
-  const items: StoredItem[] = [
-    { id: '3', title: 'Saga, Vol. 3', author: 'V', kind: 'COMIC', year: 2014, series: 'Saga', issueNumber: 3 },
-    { id: '1', title: 'Saga, Vol. 1', author: 'V', kind: 'COMIC', year: 2012, series: 'Saga', issueNumber: 1 },
-    { id: '2', title: 'Saga, Vol. 2', author: 'V', kind: 'COMIC', year: 2013, series: 'Saga', issueNumber: 2 },
+  const saga: StoredItem[] = [
+    stored('s3', 'Saga, Vol. 3', 'Saga', 3),
+    stored('s1', 'Saga, Vol. 1', 'Saga', 1),
+    stored('s2', 'Saga, Vol. 2', 'Saga', 2),
+  ];
+  const finish = (order: string[]) =>
+    answerTurn(JSON.stringify({ series: 'Saga', order, explanation: 'Empieza por el uno.' }));
+  const lookup = (query: string) => [
+    toolTurn(call('find_series', { query })),
+    toolTurn(call('list_series_volumes', { series: 'Saga' })),
   ];
 
-  it('resolves a series by name and returns it in order', async () => {
-    const { reading, service, generate } = await setup({ items, text: 'Empieza por el uno.' });
+  it('finds the series by name, lists its volumes and returns them in order', async () => {
+    const { reading, service, prisma } = await setup({ items: saga, turns: [...lookup('saga'), finish(['s1', 's2', 's3'])] });
 
     const result = await reading.order('u1', { query: 'saga', serviceId: service.id });
 
     expect(result.series).toBe('Saga');
-    expect(result.items.map((item) => [item.position, item.id])).toEqual([[1, '1'], [2, '2'], [3, '3']]);
+    expect(result.items.map((item) => [item.position, item.id])).toEqual([[1, 's1'], [2, 's2'], [3, 's3']]);
     expect(result.explanation).toBe('Empieza por el uno.');
-    expect(generate).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({ inputTokens: 40, outputTokens: 18 });
+    expect(prisma.usage).toHaveLength(3);
   });
 
   it('resolves a title inside the series to the whole series', async () => {
-    const { reading, service } = await setup({ items });
+    const { reading, service } = await setup({ items: saga, turns: [...lookup('Vol. 2'), finish(['s1', 's2', 's3'])] });
 
     const result = await reading.order('u1', { query: 'Vol. 2', serviceId: service.id });
 
     expect(result.items).toHaveLength(3);
   });
 
-  it('returns an empty result without generating when nothing matches', async () => {
-    const { reading, service, generate } = await setup({ items, search: [candidate('x', 0.05)] });
+  it('uses the deterministic order when the model order breaks the issue numbers', async () => {
+    const { reading, service } = await setup({ items: saga, turns: [...lookup('saga'), finish(['s3', 's1', 's2'])] });
+
+    const result = await reading.order('u1', { query: 'saga', serviceId: service.id });
+
+    expect(result.items.map((item) => item.id)).toEqual(['s1', 's2', 's3']);
+  });
+
+  it('uses the listed series and the default explanation when the final output is not valid', async () => {
+    const { reading, service } = await setup({ items: saga, turns: [...lookup('saga'), answerTurn('no sé')] });
+
+    const result = await reading.order('u1', { query: 'saga', serviceId: service.id });
+
+    expect(result.items.map((item) => item.id)).toEqual(['s1', 's2', 's3']);
+    expect(result.explanation).toBeTruthy();
+  });
+
+  it('falls back to the code order when the step limit is reached', async () => {
+    const turns = [...lookup('saga'), ...Array.from({ length: 3 }, () => toolTurn(call('find_series', { query: 'saga' })))];
+    const { reading, service } = await setup({ items: saga, turns });
+
+    const result = await reading.order('u1', { query: 'saga', serviceId: service.id });
+
+    expect(result.items.map((item) => item.id)).toEqual(['s1', 's2', 's3']);
+  });
+
+  it('returns the single item when it belongs to no series', async () => {
+    const { reading, service } = await setup({
+      items: [stored('x', 'Blankets', null, null)],
+      search: [similar('x', 0.7)],
+      turns: [
+        toolTurn(call('find_series', { query: 'memorias' })),
+        answerTurn('{"series":null,"order":["x"],"explanation":"Es una obra única."}'),
+      ],
+    });
+
+    const result = await reading.order('u1', { query: 'memorias', serviceId: service.id });
+
+    expect(result.series).toBe('Blankets');
+    expect(result.items.map((item) => item.id)).toEqual(['x']);
+  });
+
+  it('reports that nothing matches when the tools find nothing', async () => {
+    const { reading, service } = await setup({
+      items: saga,
+      search: [similar('x', 0.05)],
+      turns: [toolTurn(call('find_series', { query: 'zzz' })), answerTurn('{"series":null,"order":[],"explanation":""}')],
+    });
 
     const result = await reading.order('u1', { query: 'zzz', serviceId: service.id });
 
-    expect(result).toEqual({ series: null, items: [], explanation: NO_SERIES_EXPLANATION, inputTokens: 0, outputTokens: 0 });
-    expect(generate).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ series: null, items: [], explanation: NO_SERIES_EXPLANATION });
   });
 });

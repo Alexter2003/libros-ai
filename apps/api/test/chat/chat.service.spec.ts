@@ -8,6 +8,7 @@ import { TokenQuotaService } from '../../src/ai/token-quota/token-quota.service'
 import { ChatService } from '../../src/chat/chat.service';
 import { NOT_ENOUGH_INFORMATION_ANSWER } from '../../src/chat/rag.constants';
 import { FakePrisma } from '../support/fake-prisma';
+import { fakeProvider } from '../support/fake-model-provider';
 
 function item(score: number): SimilarItem {
   return {
@@ -33,7 +34,7 @@ async function setup(options: { score?: number; generate?: ModelProvider['genera
   const generate =
     options.generate ??
     vi.fn<ModelProvider['generate']>().mockResolvedValue({ text: 'Watchmen es un cómic.', inputTokens: 40, outputTokens: 12 });
-  const gateway = new GatewayService(services, quota, { generate });
+  const gateway = new GatewayService(services, quota, fakeProvider({ generate }));
   const embeddings = {
     embedQuery: vi.fn().mockResolvedValue([0.1]),
     search: vi.fn().mockResolvedValue([item(options.score ?? 0.8)]),
