@@ -112,3 +112,17 @@ Two task-focused agents run on top of the catalog and go through the same gatewa
 | `POST /agents/recommend` `{description, serviceId}` | Retrieves the 8 most similar items (same embeddings and minimum similarity as the chat), asks the model to pick up to 3 and write a short Spanish reason for each. Ids the model returns that were not candidates are discarded, and unparseable output falls back to the top candidates. Nothing relevant means an empty list and no generation tokens. |
 | `POST /agents/reading-order` `{query, serviceId}` | Resolves the series by name, then by title, then by embedding similarity. The order is computed in code (issue number, then year, then title); the model only writes a short explanation of the already sorted list. |
 
+
+## Usage reports and API keys
+
+- `GET /usage/me?from&to` (any user): my totals, token limit, remaining tokens, per service and per day.
+- `GET /reports/usage?userId&serviceId&from&to` and `GET /reports/chat-sessions?userId&from&to`: flat rows for all users. They accept an admin bearer token or an `X-API-Key` header. Days are UTC and `from`/`to` are inclusive. Chat session rows carry metadata only, never message text.
+- `GET /reports/chat-sessions/:id`: messages of any session, admin bearer token only.
+- `POST /api-keys` (admin) returns the key once (`lk_...`); only its SHA-256 hash is stored. `GET /api-keys` lists metadata and `DELETE /api-keys/:id` revokes. The web UI for this is `/admin/api-keys`.
+- The API key is accepted only on the two flat report endpoints; everywhere else the header is ignored and a bearer token is required.
+
+```bash
+curl -H "X-API-Key: $API_KEY" "https://apilibros.alexvyumes-dev.com/reports/usage?from=2026-11-01"
+```
+
+The API is documented exclusively in Swagger at `/docs` (use Authorize with a bearer token or an API key).
