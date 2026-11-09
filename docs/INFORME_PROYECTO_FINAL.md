@@ -49,7 +49,6 @@ flowchart TD
     subgraph Clientes["Capa de Presentación y Clientes"]
         Web["Aplicación Web (Vite + React SPA)\nlibros.alexvyumes-dev.com"]
         PBI["Microsoft Power BI Desktop\n(Consumidor Externo de Analítica)"]
-        Postman["Postman / Clientes REST HTTP\n(Pruebas y Verificación Externa)"]
     end
 
     subgraph Hosting["Infraestructura Cloud: AWS Lightsail (Docker Compose)"]
@@ -65,7 +64,6 @@ flowchart TD
 
     Web -->|"HTTPS / REST (JWT Bearer Token)"| Caddy
     PBI -->|"HTTPS / REST (Header X-API-Key)"| Caddy
-    Postman -->|"HTTPS / REST (Header X-API-Key)"| Caddy
 
     Caddy -->|"Proxy /api, /reports, /docs"| API
     Caddy -->|"Serve archivos estáticos Web SPA"| Web
@@ -85,7 +83,7 @@ flowchart TD
    - Si hay coincidencias relevantes, se construye un prompt delimitado por contexto y se invoca a Amazon Nova Lite.
    - Se registran los tokens consumidos en `UsageEvent`, se almacena el mensaje con sus fuentes en `ChatMessage` y se devuelve la respuesta al usuario.
 
-2. **Desde un Consumidor Externo (Power BI / Postman)**:
+2. **Desde un Consumidor Externo (Power BI)**:
    - Power BI ejecuta una petición `GET https://apilibros.alexvyumes-dev.com/reports/usage` con la cabecera `X-API-Key: lk_...`.
    - Caddy transfiere la petición a la API.
    - `AuthGuard` detecta la presencia del decorador `@AllowApiKey()`, calcula el hash SHA-256 de la clave y consulta la tabla `ApiKey`. Si la clave es válida y no está revocada, actualiza `lastUsedAt` y autoriza la petición con rol de solo lectura.
@@ -284,17 +282,11 @@ El dashboard de **Power BI Desktop** se conecta directamente a la API REST de pr
 - **Captura 6.2: Reporte Administrativo General con Filtros**  
   *[Insertar captura de /admin/usage mostrando totales filtrados y tabla]*
 
-### 8.7 API Keys y Documentación Swagger
-- **Captura 7.1: Pantalla de Creación y Revocación de API Keys**  
-  *[Insertar captura de /admin/api-keys con el diálogo de clave única]*
-- **Captura 7.2: Swagger UI con Esquemas Duales de Autenticación**  
-  *[Insertar captura de /docs mostrando los tags y el botón Authorize]*
-
-### 8.8 Consumo Externo en Postman
-- **Captura 8.1: Petición Exitosa en Postman con Header `X-API-Key`**  
-  *[Insertar captura de Postman llamando a /reports/usage con status 200 OK]*
-- **Captura 8.2: Rechazo de API Key en Endpoints no Autorizados (401)**  
-  *[Insertar captura de Postman llamando a /chat/sessions con status 401 Unauthorized]*
+### 8.8 Documentación y Exploración de la API en Swagger
+- **Captura 8.1: Swagger UI con Esquemas Duales de Autenticación**  
+  *[Insertar captura de /docs mostrando los tags y el botón Authorize con Bearer y X-API-Key]*
+- **Captura 8.2: Ejecución de Petición en Swagger con X-API-Key**  
+  *[Insertar captura de la ejecución interactiva en Swagger respondiendo 200 OK con los datos]*
 
 ### 8.9 Dashboard en Microsoft Power BI
 - **Captura 9.1: Dashboard General en Power BI Desktop**  
@@ -307,3 +299,4 @@ El dashboard de **Power BI Desktop** se conecta directamente a la API REST de pr
   *[Insertar captura de terminal ejecutando `pnpm test`]*
 - **Captura 10.2: Flujo Verde en GitHub Actions**  
   *[Insertar captura del pipeline de GitHub Actions completado con éxito]*
+
