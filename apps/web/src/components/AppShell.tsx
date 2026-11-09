@@ -32,6 +32,9 @@ export function AppShell() {
                 <Link to="/admin/users" className="text-ash hover:text-bone">
                   Usuarios
                 </Link>
+                <Link to="/admin/ai-services" className="text-ash hover:text-bone">
+                  Servicios de IA
+                </Link>
                 <Link to="/admin/usage" className="text-ash hover:text-bone">
                   Reporte de uso
                 </Link>

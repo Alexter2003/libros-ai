@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom';
 import { RequireAuth, RequireRole } from './auth/guards';
 import { AppShell } from './components/AppShell';
+import { AiServicesPage } from './pages/AiServicesPage';
 import { AgentsPage } from './pages/AgentsPage';
 import { ChatPage } from './pages/ChatPage';
 import { CatalogPage } from './pages/CatalogPage';
@@ -26,6 +27,7 @@ export function App() {
           <Route element={<RequireRole role="ADMIN" />}>
             <Route path="/admin/users" element={<UsersPage />} />
             <Route path="/admin/items" element={<ItemsAdminPage />} />
+            <Route path="/admin/ai-services" element={<AiServicesPage />} />
             <Route path="/admin/usage" element={<UsageReportPage />} />
             <Route path="/admin/api-keys" element={<ApiKeysPage />} />
           </Route>

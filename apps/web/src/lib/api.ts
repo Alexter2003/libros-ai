@@ -270,3 +270,12 @@ export function rangeQuery(params: Record<string, string>): string {
   const entries = Object.entries(params).filter(([, value]) => value !== '');
   return entries.length === 0 ? '' : `?${new URLSearchParams(entries).toString()}`;
 }
+
+export interface AiServiceConfig extends AiServiceSummary {
+  modelId: string;
+  provider: string;
+  maxOutputTokens: number | null;
+  temperature: number | null;
+  createdAt: string;
+  updatedAt: string;
+}

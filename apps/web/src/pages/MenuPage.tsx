@@ -86,6 +86,14 @@ export function MenuPage() {
             </Card>
             <Card>
               <Eyebrow>Administración</Eyebrow>
+              <p className="mt-4 text-heading font-medium">Servicios de IA</p>
+              <p className="mt-2 text-body-sm text-ash">Configura modelos, parámetros y activa o desactiva servicios.</p>
+              <Link to="/admin/ai-services" className="mt-6 inline-block">
+                <Button>Gestionar servicios</Button>
+              </Link>
+            </Card>
+            <Card>
+              <Eyebrow>Administración</Eyebrow>
               <p className="mt-4 text-heading font-medium">Reporte de uso</p>
               <p className="mt-2 text-body-sm text-ash">Consumo y conversaciones de todos los usuarios, con filtros.</p>
               <Link to="/admin/usage" className="mt-6 inline-block">
