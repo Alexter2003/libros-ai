@@ -80,12 +80,25 @@ Set these in `.env` (and in `/opt/libros/.env` on the server, owner `deploy`, mo
     "Action": ["bedrock:InvokeModel"],
     "Resource": [
       "arn:aws:bedrock:*::foundation-model/MODEL_ID",
-      "arn:aws:bedrock:REGION:ACCOUNT_ID:inference-profile/PROFILE_ID"
+      "arn:aws:bedrock:REGION:ACCOUNT_ID:inference-profile/PROFILE_ID",
+      "arn:aws:bedrock:REGION::foundation-model/amazon.titan-embed-text-v2:0"
     ]
   }]
 }
 ```
 
-The model must also be available to the account in the Bedrock console.
+The model must also be available to the account in the Bedrock console. The Titan Text Embeddings v2 line in the policy is needed by the catalog chatbot.
+
+## Catalog chatbot (RAG)
+
+The chatbot answers only from catalog items. Each item has a 1024-dimension Titan Text Embeddings v2 vector (pgvector column `Item.embedding`). A question is embedded, the 5 closest items by cosine similarity are retrieved, and the answer is generated through the AI gateway, so the on/off switch and the token limit apply. If no item reaches the minimum similarity (`MIN_SIMILARITY` in `apps/api/src/chat/rag.constants.ts`, currently 0.30) the answer is "not enough information" and the model is not called.
+
+| Endpoint | Access | Notes |
+|---|---|---|
+| `POST /chat/messages` | any user | `{ message, serviceId, sessionId? }`; returns `answer`, `grounded`, `sources`, `sessionId` and tokens; `404` unknown or foreign session, `422` disabled service, `429` limit reached, `503` provider error |
+| `GET /chat/sessions`, `GET /chat/sessions/:id` | any user | own sessions and messages only; foreign sessions return `404` |
+| `POST /ai/reindex` | admin | generates the missing embeddings; `?all=true` regenerates every item; returns `{ indexed, failed, total }` |
+
+Embeddings refresh automatically when an item is created or its title, author, kind, genre, year, series or synopsis change; if Bedrock fails the item is still saved and the embedding stays empty until the next reindex. Embedding calls are stored as usage of the service `Titan Embeddings` and count in the consumption total. The seed does not call Bedrock: after seeding a new environment, log in as admin and run `POST /ai/reindex` once.
 
 Design reference: `DESIGN.md`.
