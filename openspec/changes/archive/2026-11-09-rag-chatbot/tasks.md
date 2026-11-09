@@ -29,7 +29,7 @@
 ## 5. Docs and release
 
 - [x] 5.1 Document the chat, reindex flow and Titan IAM permission in `README.md` (endpoint table, retrieval parameters, post-deploy reindex step). Manual check: the README steps match the endpoints in Swagger.
-- [ ] 5.2 Production check after deploy: log in as admin, run `POST /ai/reindex`, ask an on-topic and an off-topic question from the web, confirm history persists after reload. Captura de evidencia: production chat screen and reindex response.
+- [x] 5.2 Production check after deploy: log in as admin, run `POST /ai/reindex`, ask an on-topic and an off-topic question from the web, confirm history persists after reload. Captura de evidencia: production chat screen and reindex response.
 
 ## Workflow follow-up
 
