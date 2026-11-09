@@ -1,5 +1,5 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Eyebrow } from '../components/ui/Eyebrow';
 import { Input } from '../components/ui/Input';
@@ -62,6 +62,7 @@ export function ChatPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quota, setQuota] = useState<QuotaStatus | null>(null);
+  const [searchParams] = useSearchParams();
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const refreshSidebar = useCallback(async () => {
@@ -89,6 +90,11 @@ export function ChatPage() {
       active = false;
     };
   }, [refreshSidebar]);
+
+  const requestedSession = searchParams.get('session');
+  useEffect(() => {
+    if (requestedSession) void openSession(requestedSession);
+  }, [requestedSession]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView?.({ behavior: 'smooth' });

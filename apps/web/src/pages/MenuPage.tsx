@@ -58,6 +58,14 @@ export function MenuPage() {
             <Button>Abrir agentes</Button>
           </Link>
         </Card>
+        <Card>
+          <Eyebrow>Mi cuenta</Eyebrow>
+          <p className="mt-4 text-heading font-medium">Mi consumo</p>
+          <p className="mt-2 text-body-sm text-ash">Revisa tus tokens, tu consumo por servicio y tus conversaciones.</p>
+          <Link to="/usage" className="mt-6 inline-block">
+            <Button>Ver consumo</Button>
+          </Link>
+        </Card>
         {user?.role === 'ADMIN' && (
           <>
             <Card>
@@ -74,6 +82,22 @@ export function MenuPage() {
               <p className="mt-2 text-body-sm text-ash">Crea, edita y desactiva cuentas.</p>
               <Link to="/admin/users" className="mt-6 inline-block">
                 <Button>Gestionar usuarios</Button>
+              </Link>
+            </Card>
+            <Card>
+              <Eyebrow>Administración</Eyebrow>
+              <p className="mt-4 text-heading font-medium">Reporte de uso</p>
+              <p className="mt-2 text-body-sm text-ash">Consumo y conversaciones de todos los usuarios, con filtros.</p>
+              <Link to="/admin/usage" className="mt-6 inline-block">
+                <Button>Abrir reporte</Button>
+              </Link>
+            </Card>
+            <Card>
+              <Eyebrow>Administración</Eyebrow>
+              <p className="mt-4 text-heading font-medium">Claves de API</p>
+              <p className="mt-2 text-body-sm text-ash">Crea y revoca claves de solo lectura para Power BI.</p>
+              <Link to="/admin/api-keys" className="mt-6 inline-block">
+                <Button>Gestionar claves</Button>
               </Link>
             </Card>
           </>

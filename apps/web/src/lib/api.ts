@@ -202,3 +202,71 @@ export interface ReadingOrderResult {
   inputTokens: number;
   outputTokens: number;
 }
+
+export interface UsageTotals {
+  requests: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
+export interface OwnUsage {
+  totals: UsageTotals;
+  byService: Array<UsageTotals & { serviceName: string }>;
+  byDay: Array<UsageTotals & { date: string }>;
+  quota: QuotaStatus;
+}
+
+export interface UsageRow extends UsageTotals {
+  date: string;
+  userId: string;
+  userEmail: string;
+  serviceName: string;
+}
+
+export interface SessionRow {
+  sessionId: string;
+  userId: string;
+  userEmail: string;
+  title: string;
+  messageCount: number;
+  totalTokens: number;
+  createdAt: string;
+  lastActivityAt: string;
+}
+
+export interface ReportMessage {
+  id: string;
+  role: 'USER' | 'ASSISTANT';
+  content: string;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  createdAt: string;
+}
+
+export interface SessionMessages {
+  sessionId: string;
+  userId: string;
+  userEmail: string;
+  title: string;
+  createdAt: string;
+  messages: ReportMessage[];
+}
+
+export interface ApiKeySummary {
+  id: string;
+  name: string;
+  prefix: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface CreatedApiKey extends ApiKeySummary {
+  key: string;
+}
+
+export function rangeQuery(params: Record<string, string>): string {
+  const entries = Object.entries(params).filter(([, value]) => value !== '');
+  return entries.length === 0 ? '' : `?${new URLSearchParams(entries).toString()}`;
+}
