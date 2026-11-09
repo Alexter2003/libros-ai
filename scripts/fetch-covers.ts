@@ -12,7 +12,14 @@ const MIN_BYTES = 2000;
 const COVER_ID_OVERRIDES: Record<string, number> = {
   'the-sandman-vol-1-preludes-nocturnes': 7508162,
   'y-the-last-man-vol-1-unmanned': 12293475,
+  'sapiens-a-brief-history-of-humankind': 8634250,
+  'hellboy-vol-1-seed-of-destruction': 2958492,
+  'locke-key-vol-1-welcome-to-lovecraft': 6671226,
+  'sin-city-vol-1-the-hard-goodbye': 869322,
 };
+
+// Titles whose only available image is not a usable cover; they use the generated placeholder
+const NO_COVER = new Set(['y-the-last-man-vol-3-one-small-step']);
 
 async function download(url: string): Promise<Buffer | null> {
   try {
@@ -59,6 +66,34 @@ async function fromOpenLibrarySearch(item: SeedItem): Promise<Buffer | null> {
     : null;
 }
 
+function tokens(text: string): string[] {
+  return text.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((t) => t.length > 1 && t !== 'vol');
+}
+
+async function fromOpenLibraryQuery(item: SeedItem): Promise<Buffer | null> {
+  const wanted = tokens(item.title);
+  const query = new URLSearchParams({
+    q: `${item.title} ${item.author.split(' and ')[0]}`,
+    limit: '10',
+    fields: 'title,cover_i',
+  });
+  const data = await getJson(`https://openlibrary.org/search.json?${query}`);
+  const docs = field(data, 'docs');
+  if (!Array.isArray(docs)) return null;
+  let best: { id: number; score: number } | null = null;
+  for (const doc of docs) {
+    const id = field(doc, 'cover_i');
+    const title = field(doc, 'title');
+    if (typeof id !== 'number' || typeof title !== 'string') continue;
+    const have = new Set(tokens(title));
+    const score = wanted.filter((t) => have.has(t)).length / wanted.length;
+    if (!best || score > best.score) best = { id, score };
+  }
+  return best && best.score >= 0.5
+    ? download(`https://covers.openlibrary.org/b/id/${best.id}-L.jpg?default=false`)
+    : null;
+}
+
 async function fromGoogleBooks(item: SeedItem): Promise<Buffer | null> {
   const q = `intitle:${item.title} inauthor:${item.author.split(' and ')[0]}`;
   const data = await getJson(
@@ -77,6 +112,10 @@ async function main(): Promise<void> {
 
   for (const item of SEED_ITEMS) {
     const slug = coverSlug(item);
+    if (NO_COVER.has(slug)) {
+      console.log(`~ ${slug}: skipped (placeholder)`);
+      continue;
+    }
     const target = join(COVERS_DIR, `${slug}.webp`);
     if (existsSync(target) && !FORCE) {
       console.log(`= ${slug}: already present`);
@@ -89,6 +128,7 @@ async function main(): Promise<void> {
         : []),
       ['openlibrary-isbn', () => fromOpenLibraryIsbn(item)],
       ['openlibrary-search', () => fromOpenLibrarySearch(item)],
+      ['openlibrary-query', () => fromOpenLibraryQuery(item)],
       ['googlebooks', () => fromGoogleBooks(item)],
     ];
     let saved = false;
