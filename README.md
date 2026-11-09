@@ -1,76 +1,144 @@
-# Libros — books and comics app with AI services
+# Libros & Cómics AI
 
-pnpm monorepo: `apps/api` (NestJS + Prisma + PostgreSQL/pgvector) and `apps/web` (Vite + React).
+A web application to browse, search and get recommendations about a catalog of books and comics, powered by generative AI on Amazon Bedrock: a RAG chatbot, two task-focused AI agents, per-user token quotas and usage reports that external tools such as Power BI can consume.
 
-## Local development
+- **Live app:** https://libros.alexvyumes-dev.com
+- **API documentation (Swagger):** https://apilibros.alexvyumes-dev.com/docs
 
-```bash
-cp .env.example .env        # fill in values
-pnpm install
-pnpm dev                    # starts Postgres (Docker), the API (:3000) and the web app (:5173)
-pnpm --filter api prisma:migrate   # first run: applies migrations (enables pgvector)
+## Features
+
+- **Catalog** of books and comics with covers, series and issue numbers; full CRUD for administrators.
+- **Catalog chatbot (RAG)** that answers only from the catalog, cites its sources and remembers the conversation.
+- **Recommender agent**: describe what you like and get up to three titles with a reason for each.
+- **Reading-order agent**: give a series or a title and get the order to read it, with an explanation.
+- **Authentication and roles** (`ADMIN`, `USER`) with JWT.
+- **Token control**: per-user limits, on/off switch per AI service, and a gateway that records every model call.
+- **Usage reports**: personal consumption for users, full audit with filters for administrators, and read-only report endpoints for external tools using revocable API keys.
+- **Documented API** with Swagger/OpenAPI, automated tests and a CI/CD pipeline that deploys only when checks pass.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Web | React 19, Vite, Tailwind CSS, React Router |
+| API | NestJS, Prisma ORM, class-validator, Swagger |
+| Database | PostgreSQL 17 with the `pgvector` extension |
+| AI | Amazon Bedrock: Nova Lite (generation) and Titan Text Embeddings v2 (vectors) |
+| Tooling | pnpm workspaces, TypeScript (strict), ESLint, Vitest |
+| Infrastructure | Docker Compose, Caddy (TLS and reverse proxy), AWS Lightsail, GitHub Actions |
+
+## Architecture
+
+```
+ Browser (React SPA) ──HTTPS──► Caddy ──┬─► static web build
+ Power BI / curl ──X-API-Key───►        └─► NestJS API ──► PostgreSQL + pgvector
+                                                │
+                                                └──► Amazon Bedrock (Nova Lite, Titan Embeddings v2)
 ```
 
-- Swagger: http://localhost:3000/docs
-- Health: http://localhost:3000/health
+## Repository structure
 
-## Scripts
+```
+apps/
+  api/            NestJS API
+    prisma/       schema, migrations, demo seed and cover manifest
+    src/          auth, users, items, ai (gateway, quotas, embeddings), chat, agents, usage, api-keys
+    test/         Vitest tests (Bedrock mocked)
+  web/            Vite + React single-page app
+    public/covers demo cover images (WebP)
+deploy/           production Docker Compose, Caddyfile, web image, local dev database
+scripts/          cover downloader
+openspec/         specs and archived changes (spec-driven development)
+DESIGN.md         visual design reference for the web app
+```
 
-| Command | What it does |
+## Getting started (local development)
+
+### Prerequisites
+
+- Node.js 22 or newer
+- [pnpm](https://pnpm.io) 10 (`corepack enable` is enough)
+- Docker (runs the local PostgreSQL with `pgvector`)
+- Optional: an AWS account with Amazon Bedrock access, needed only for the AI features (see [AWS configuration](#aws-configuration))
+
+### 1. Install and configure
+
+```bash
+git clone https://github.com/Alexter2003/libros-ai.git
+cd libros-ai
+pnpm install
+cp .env.example .env
+```
+
+Edit `.env`. The defaults work for local development except `JWT_SECRET` (at least 32 characters; generate one with `openssl rand -hex 32`) and `ADMIN_PASSWORD`. See [Environment variables](#environment-variables).
+
+### 2. Start the database
+
+```bash
+pnpm db:up
+```
+
+This starts PostgreSQL 17 with `pgvector` on `127.0.0.1:5432` using the credentials in `.env`.
+
+### 3. Run the migrations
+
+```bash
+pnpm --filter api prisma:migrate
+```
+
+This applies every migration (the first one enables `pgvector`) and generates the Prisma client.
+
+### 4. Load the demo data
+
+```bash
+pnpm --filter api db:seed
+```
+
+It loads the demo catalog (54 titles with covers) and creates the default `Nova Lite` AI service. The seed is idempotent: run it as many times as needed. It does not call Bedrock.
+
+### 5. Start the app
+
+```bash
+pnpm dev
+```
+
+| Service | URL |
 |---|---|
-| `pnpm dev` | Postgres + API + web together |
-| `pnpm build` | builds both apps |
-| `pnpm typecheck` | TypeScript strict checks |
-| `pnpm lint` | ESLint (explicit `any` is an error) |
-| `pnpm test` | runs tests of every app that defines them (Vitest, Bedrock mocked) |
-| `pnpm --filter api db:seed` | loads the demo catalog (idempotent) |
-| `pnpm covers:fetch` | downloads missing demo covers (add `--force` to redo all) |
+| Web app | http://localhost:5173 |
+| API | http://localhost:3000 |
+| Swagger | http://localhost:3000/docs |
+| Health check | http://localhost:3000/health |
 
-## Production
+On startup, if no administrator exists, the API creates one from `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Log in at http://localhost:5173 with those credentials.
 
-`deploy/docker-compose.yml` runs Postgres (pgvector), the API and a Caddy image that serves the web build and proxies the API. The GitHub Actions workflow (`.github/workflows/ci.yml`) checks both apps and deploys to Lightsail over SSH only when checks pass. Server setup: `/opt/libros` with `docker-compose.yml` and a `.env` containing `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` `WEB_ORIGIN=https://libros.alexvyumes-dev.com`, `JWT_SECRET` (32+ chars, `openssl rand -hex 32`), `JWT_EXPIRES_IN` (e.g. `8h`), `ADMIN_EMAIL` and `ADMIN_PASSWORD`, plus the AI variables described in the AI gateway section.
+### 6. Index the catalog for the chatbot (requires AWS credentials)
 
-## Authentication
+The chatbot and the recommender search by meaning, so each catalog item needs an embedding. After configuring AWS, log in as administrator and call `POST /ai/reindex` once (from Swagger: Authorize with the token from `POST /auth/login`, then run `POST /ai/reindex`). New or edited items are indexed automatically afterwards.
 
-Users log in with email and password and receive a JWT access token (`Authorization: Bearer`). Roles are `ADMIN` and `USER`; only administrators create, edit and delete accounts (`/users`). On startup, if no administrator exists, one is created from `ADMIN_EMAIL` and `ADMIN_PASSWORD`; afterwards those variables are not used again, so change the password from the users screen. Use a strong `ADMIN_PASSWORD` in production.
+## Environment variables
 
-## Catalog
+All variables live in a single `.env` at the repository root, used by the API and by Vite.
 
-`Item` is a book or a comic (`kind`: `BOOK` or `COMIC`). Any authenticated user can read it; only administrators write it.
-
-| Endpoint | Access | Notes |
+| Variable | Required | Description |
 |---|---|---|
-| `GET /items` | any user | `page`, `pageSize` (max 50), `kind`, `q` (title, author or series) |
-| `GET /items/:id` | any user | |
-| `POST /items`, `PATCH /items/:id`, `DELETE /items/:id` | admin | `series` and `issueNumber` only for comics; `409` on duplicate ISBN or duplicate title, author and kind |
+| `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | yes | Credentials of the local database container |
+| `DATABASE_URL` | yes | Connection string used by the API and Prisma |
+| `PORT` | no | API port (default `3000`) |
+| `WEB_ORIGIN` | yes | Allowed browser origins, comma separated (`http://localhost:5173` locally) |
+| `JWT_SECRET` | yes | Signing secret, at least 32 characters |
+| `JWT_EXPIRES_IN` | no | Token lifetime (default `8h`) |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | yes | First administrator, created only when no administrator exists (password 8 to 72 characters) |
+| `AWS_REGION` | no | Bedrock region (default `us-east-2`) |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | for AI | IAM user credentials |
+| `BEDROCK_MODEL_ID` | for AI | Model or inference profile used by the seeded `Nova Lite` service |
+| `BEDROCK_EMBEDDING_MODEL_ID` | no | Embedding model (default `amazon.titan-embed-text-v2:0`) |
+| `VITE_API_URL` | no | API URL used by the web app (default `http://localhost:3000`) |
 
-### Demo data
-
-`pnpm --filter api db:seed` loads about 55 titles (eight of them series with three numbered volumes) from `apps/api/prisma/seed-data.ts`. It upserts by title, author and kind: new titles are created, existing ones are refreshed to the demo values (so manual edits to a demo row are overwritten), and items created through the app are never touched. Run it as many times as needed. On the server, from `/opt/libros`: `docker compose exec api pnpm db:seed`.
-
-### Covers
-
-Demo covers are WebP files in `apps/web/public/covers/`, listed in `apps/api/prisma/covers.json`, so the app never depends on a third-party host. Items without a cover, or whose image fails to load, show a generated placeholder. To refresh them, run `pnpm covers:fetch` (Open Library first, Google Books as fallback) and review the images.
-
-> **Copyright notice:** the cover images are copyrighted by their respective publishers and are included for academic purposes only (university course project). They are not licensed for any commercial use.
-
-## AI gateway
-
-Every model call goes through one gateway that checks the service, checks the user's token quota, calls Amazon Bedrock (Converse API) and stores the tokens reported by the model.
-
-| Endpoint | Access | Notes |
-|---|---|---|
-| `GET /ai-services`, `GET /ai-services/:id` | any user | users see enabled services only; admins see all |
-| `POST /ai-services`, `PATCH /ai-services/:id`, `DELETE /ai-services/:id` | admin | `enabled` turns a service on or off; `409` on duplicate name; usage history survives deletion |
-| `PATCH /users/:id/token-limit` | admin | `{ "tokenLimit": 5000 }` or `null` for unlimited; total of input plus output tokens |
-| `POST /ai/generate` | any user | `{ serviceId, prompt }`; `422` disabled service, `429` limit reached, `503` provider error |
-| `GET /ai/quota` | any user | own limit, tokens used and tokens remaining |
-
-The check runs before the call and usage is stored after it, so a user can exceed the limit by at most one call. `pnpm --filter api db:seed` also creates the default `Nova Lite` service (existing services are never overwritten).
+Without AWS credentials the app still runs: catalog, users, reports and API keys work, and AI endpoints answer `503`.
 
 ### AWS configuration
 
-Set these in `.env` (and in `/opt/libros/.env` on the server, owner `deploy`, mode 600): `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `BEDROCK_MODEL_ID` (model id for the seeded service). Use an IAM user, never root keys, with only this permission on the model you use (replace `ACCOUNT_ID`, the model id and the inference profile id with yours):
+Use a dedicated IAM user (never root keys) with only the permission to invoke the models you use, and make sure those models are enabled for the account in the Bedrock console. Replace the placeholders with your values:
 
 ```json
 {
@@ -87,42 +155,132 @@ Set these in `.env` (and in `/opt/libros/.env` on the server, owner `deploy`, mo
 }
 ```
 
-The model must also be available to the account in the Bedrock console. The Titan Text Embeddings v2 line in the policy is needed by the catalog chatbot.
+## Scripts
 
-## Catalog chatbot (RAG)
-
-The chatbot answers only from catalog items. Each item has a 1024-dimension Titan Text Embeddings v2 vector (pgvector column `Item.embedding`). A question is embedded, the 5 closest items by cosine similarity are retrieved, and the answer is generated through the AI gateway, so the on/off switch and the token limit apply. If no item reaches the minimum similarity (`MIN_SIMILARITY` in `apps/api/src/chat/rag.constants.ts`, currently 0.18) the answer is "not enough information" and the model is not called.
-
-| Endpoint | Access | Notes |
-|---|---|---|
-| `POST /chat/messages` | any user | `{ message, serviceId, sessionId? }`; returns `answer`, `grounded`, `sources`, `sessionId` and tokens; `404` unknown or foreign session, `422` disabled service, `429` limit reached, `503` provider error |
-| `GET /chat/sessions`, `GET /chat/sessions/:id` | any user | own sessions and messages only; foreign sessions return `404` |
-| `POST /ai/reindex` | admin | generates the missing embeddings; `?all=true` regenerates every item; returns `{ indexed, failed, total }` |
-
-Embeddings refresh automatically when an item is created or its title, author, kind, genre, year, series or synopsis change; if Bedrock fails the item is still saved and the embedding stays empty until the next reindex. Embedding calls are stored as usage of the service `Titan Embeddings` and count in the consumption total. The seed does not call Bedrock: after seeding a new environment, log in as admin and run `POST /ai/reindex` once.
-
-Design reference: `DESIGN.md`.
-
-## AI agents
-
-Two task-focused agents run on top of the catalog and go through the same gateway as the chat, so service on/off, token limits and usage recording apply. Both are authenticated and take an enabled `serviceId`; the web screen is `/agents`.
-
-| Endpoint | What it does |
+| Command | What it does |
 |---|---|
-| `POST /agents/recommend` `{description, serviceId}` | Retrieves the 8 most similar items (same embeddings and minimum similarity as the chat), asks the model to pick up to 3 and write a short Spanish reason for each. Ids the model returns that were not candidates are discarded, and unparseable output falls back to the top candidates. Nothing relevant means an empty list and no generation tokens. |
-| `POST /agents/reading-order` `{query, serviceId}` | Resolves the series by name, then by title, then by embedding similarity. The order is computed in code (issue number, then year, then title); the model only writes a short explanation of the already sorted list. |
+| `pnpm dev` | Starts the database, the API and the web app together |
+| `pnpm db:up` / `pnpm db:down` | Starts / stops the local database |
+| `pnpm --filter api prisma:migrate` | Applies migrations in development (creates new ones when the schema changes) |
+| `pnpm --filter api db:seed` | Loads the demo catalog and the default AI service (idempotent) |
+| `pnpm build` | Builds both apps |
+| `pnpm typecheck` | TypeScript strict checks |
+| `pnpm lint` | ESLint (explicit `any` is an error) |
+| `pnpm test` | Runs the Vitest suite (Bedrock is mocked, no AWS needed) |
+| `pnpm covers:fetch` | Downloads missing demo covers (`--force` redoes all) |
 
+## Using the app
 
-## Usage reports and API keys
+| Role | What they can do |
+|---|---|
+| `USER` | Browse the catalog, chat, use both agents, see their own consumption and conversations (`/usage`) |
+| `ADMIN` | Everything above, plus manage the catalog (`/admin/items`) and users with their token limits (`/admin/users`), audit usage and conversations (`/admin/usage`) and manage API keys (`/admin/api-keys`) |
 
-- `GET /usage/me?from&to` (any user): my totals, token limit, remaining tokens, per service and per day.
-- `GET /reports/usage?userId&serviceId&from&to` and `GET /reports/chat-sessions?userId&from&to`: flat rows for all users. They accept an admin bearer token or an `X-API-Key` header. Days are UTC and `from`/`to` are inclusive. Chat session rows carry metadata only, never message text.
-- `GET /reports/chat-sessions/:id`: messages of any session, admin bearer token only.
-- `POST /api-keys` (admin) returns the key once (`lk_...`); only its SHA-256 hash is stored. `GET /api-keys` lists metadata and `DELETE /api-keys/:id` revokes. The web UI for this is `/admin/api-keys`.
-- The API key is accepted only on the two flat report endpoints; everywhere else the header is ignored and a bearer token is required.
+Administrators create the other accounts from the users screen.
+
+## API overview
+
+Interactive documentation is served at `/docs`. Protected endpoints use `Authorization: Bearer <token>` (obtain it with `POST /auth/login`); report endpoints also accept `X-API-Key`.
+
+| Area | Endpoints | Access |
+|---|---|---|
+| Auth | `POST /auth/login`, `GET /auth/me`, `POST /auth/logout` | public / authenticated |
+| Users | `/users`, `PATCH /users/:id/token-limit` | admin |
+| Catalog | `GET /items`, `GET /items/:id`; `POST`, `PATCH`, `DELETE /items` | any user / admin |
+| AI services | `/ai-services`, `POST /ai/generate`, `GET /ai/quota`, `POST /ai/reindex` | any user; configuration and reindex are admin |
+| Chat | `POST /chat/messages`, `GET /chat/sessions`, `GET /chat/sessions/:id` | any user, own data only |
+| Agents | `POST /agents/recommend`, `POST /agents/reading-order` | any user |
+| Usage | `GET /usage/me` | any user |
+| Reports | `GET /reports/usage`, `GET /reports/chat-sessions` | admin or API key |
+| Reports | `GET /reports/chat-sessions/:id` | admin only |
+| API keys | `POST`, `GET /api-keys`, `DELETE /api-keys/:id` | admin |
+| Health | `GET /health` | public |
+
+Typical error codes: `401` not authenticated, `403` insufficient role, `404` not found or someone else's data, `422` AI service disabled, `429` token limit reached, `503` AI provider unavailable.
+
+## How the AI features work
+
+### AI gateway and quotas
+
+Every model call goes through one gateway that checks the service is enabled, checks the user's token quota, calls Amazon Bedrock (Converse API) and stores the tokens the model reports. Limits count input plus output tokens; a `null` limit means unlimited. The quota is checked before the call and usage is stored after it, so a user can exceed the limit by at most one call. Embedding calls are stored as usage of the `Titan Embeddings` service.
+
+### Catalog chatbot (RAG)
+
+Each item has a 1024-dimension Titan Text Embeddings v2 vector (`Item.embedding`, `pgvector`). A question is embedded, the 5 closest items by cosine similarity are retrieved, and the answer is generated from them. If no item reaches the minimum similarity (`MIN_SIMILARITY`, currently `0.18`, in `apps/api/src/chat/rag.constants.ts`) the app answers that the catalog has no information and the model is not called. Conversations are stored per user and the last six messages are used as memory. Embeddings refresh automatically when an item is created or its content changes; if Bedrock fails, the item is still saved and `POST /ai/reindex` fills the gap.
+
+### Agents
+
+Both agents follow the pattern *retrieve, constrain, generate*: the model writes text, but the code decides which data is valid.
+
+- **Recommender** (`POST /agents/recommend`): retrieves the 8 most similar items, asks the model to pick up to 3 with a short reason, discards any id that was not a candidate and falls back to the top candidates if the output is unparseable.
+- **Reading order** (`POST /agents/reading-order`): resolves the series by name, then by title, then by embedding similarity; sorts the volumes in code (issue number, year, title) and asks the model only for a short explanation.
+
+### Usage reports and API keys
+
+- `GET /usage/me?from&to`: totals, limit, remaining tokens, per service and per day.
+- `GET /reports/usage?userId&serviceId&from&to` and `GET /reports/chat-sessions?userId&from&to`: flat rows for all users. Days are UTC and `from`/`to` are inclusive. Chat session rows contain metadata only, never message text.
+- API keys (`lk_...`) are created by an administrator in `/admin/api-keys`. The full key is shown once; only its SHA-256 hash is stored. A key can be revoked at any time and works only on the two flat report endpoints.
 
 ```bash
 curl -H "X-API-Key: $API_KEY" "https://apilibros.alexvyumes-dev.com/reports/usage?from=2026-11-01"
 ```
 
-The API is documented exclusively in Swagger at `/docs` (use Authorize with a bearer token or an API key).
+## Demo data and covers
+
+`apps/api/prisma/seed-data.ts` defines the demo catalog (54 titles, eight series with three numbered volumes). The seed upserts by title, author and kind: demo rows are refreshed to their demo values and items created through the app are never touched.
+
+Covers are WebP files in `apps/web/public/covers/`, listed in `apps/api/prisma/covers.json`, so the app does not depend on any third-party host. Items without a cover show a generated placeholder. `pnpm covers:fetch` refreshes them (Open Library first, Google Books as fallback).
+
+> **Copyright notice:** the cover images belong to their respective publishers and are included for academic purposes only (university course project). They are not licensed for commercial use.
+
+## Testing and quality
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+```
+
+The API test suite (Vitest, 46 tests) covers token calculation and quotas, the AI gateway, chat persistence and isolation between users, the agents, usage aggregation and API key hashing. Bedrock is mocked, so the suite needs neither AWS nor a database.
+
+## Deployment
+
+Production runs on a single AWS Lightsail instance (Ubuntu) with Docker Compose (`deploy/docker-compose.yml`): PostgreSQL with `pgvector`, the API, and a Caddy image that serves the web build, proxies the API and obtains TLS certificates automatically.
+
+### CI/CD
+
+`.github/workflows/ci.yml` runs on every push and pull request: lint, typecheck, build and tests for both apps. Only pushes to `main` that pass these checks continue to the deploy job, which builds the images, publishes them to GitHub Container Registry tagged with the commit SHA, updates the server over SSH and waits for `GET /health` to answer. The API container applies pending migrations on start (`prisma migrate deploy`).
+
+Required GitHub Actions secrets: `LIGHTSAIL_HOST`, `LIGHTSAIL_USER`, `LIGHTSAIL_SSH_KEY`.
+
+### Server setup (once)
+
+1. Create the instance, attach a static IP, open ports 80, 443 and 22, and point the web and API domains to it. Edit the domains in `deploy/Caddyfile` and in the `env` block of the workflow.
+2. Install Docker and create `/opt/libros` owned by the deploy user.
+3. Create `/opt/libros/.env` (mode `600`) with `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `WEB_ORIGIN` (the web URL), `JWT_SECRET`, `JWT_EXPIRES_IN`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `BEDROCK_MODEL_ID` and optionally `BEDROCK_EMBEDDING_MODEL_ID`. Use strong values.
+4. Push to `main`; the first deploy brings everything up.
+
+### Seeding production
+
+The seed runs inside the API container (the image already contains the seed script):
+
+```bash
+sudo docker ps --format '{{.Names}}'          # find the API container, e.g. libros-api-1
+sudo docker exec <api-container> pnpm exec tsx prisma/seed.ts
+```
+
+Then log in as administrator and call `POST /ai/reindex` once. The seed is idempotent and can be repeated after catalog changes.
+
+## Troubleshooting
+
+| Symptom | Likely cause |
+|---|---|
+| API fails with `Invalid environment configuration` | A required variable in `.env` is missing or invalid (the message lists which) |
+| `extension "vector" is not available` | The database is not the `pgvector` image; use `pnpm db:up` |
+| AI endpoints answer `503` | AWS credentials or `BEDROCK_MODEL_ID` missing, or the model is not enabled for the account |
+| Chatbot says it has no information | Items are not indexed yet: run `POST /ai/reindex` as administrator |
+| Web app cannot reach the API | Check `VITE_API_URL` and that `WEB_ORIGIN` includes the web origin |
+
+## Development workflow
+
+Changes are specified before they are built using OpenSpec: `openspec/specs/` holds the current behavior of each capability and `openspec/changes/archive/` the proposal, design and tasks of every delivered change.
