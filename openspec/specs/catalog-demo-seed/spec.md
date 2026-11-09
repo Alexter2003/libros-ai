@@ -13,7 +13,7 @@ The system SHALL provide one command that loads the demo catalog into the config
 - **THEN** it creates the demo items and reports how many were created
 
 ### Requirement: Demo catalog content
-The demo catalog SHALL contain between 20 and 30 real titles, with books and comics each making up at least 40% of them. Every item SHALL carry a synopsis of at least two sentences so retrieval has meaningful text to work with.
+The demo catalog SHALL contain between 20 and 60 real titles, with books and comics each making up at least 40% of them. Every item SHALL carry a synopsis of at least two sentences so retrieval has meaningful text to work with.
 
 #### Scenario: Mixed kinds
 - **WHEN** the demo catalog is loaded
@@ -51,3 +51,10 @@ The demo load SHALL NOT create, modify or delete user accounts.
 #### Scenario: Users unchanged
 - **WHEN** the command runs
 - **THEN** the set of users is identical before and after
+
+### Requirement: Demo series with numbered entries
+The demo catalog SHALL include at least five series that each have three or more entries with consecutive `issueNumber` values, so reading-order features can be demonstrated.
+
+#### Scenario: Series available for reading order
+- **WHEN** the demo catalog is loaded
+- **THEN** at least five series each contain three or more numbered entries

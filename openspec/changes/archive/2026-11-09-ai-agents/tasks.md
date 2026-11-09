@@ -8,7 +8,7 @@
 
 - [x] 2.1 Add about 30 entries to `apps/api/prisma/seed-data.ts` (volumes 2 and 3 of Saga, The Sandman, Y: The Last Man and Bone; the Mistborn, Dune, Foundation and Lord of the Rings sequels; plus single titles in new genres), set `series` and `issueNumber` on existing entries that belong to a series, and keep every synopsis at two or more sentences. Manual check: `pnpm --filter api db:seed` reports the new count and is idempotent on a second run, and at least five series have three or more numbered entries.
 - [x] 2.2 Run `pnpm covers:fetch`, review the downloaded covers and fix wrong or missing ones (override ids or leave without cover). Manual check: the catalog shows the new covers and no item shows a wrong one. Captura de evidencia: catalog grid with new covers.
-- [ ] 2.3 Seed and reindex: run the seed and `POST /ai/reindex` locally, then in production after deploy. Manual check: the catalog count matches the seed and the chat finds a new title. Captura de evidencia: reindex response with the new total.
+- [x] 2.3 Seed and reindex: run the seed and `POST /ai/reindex` locally, then in production after deploy. Manual check: the catalog count matches the seed and the chat finds a new title. Captura de evidencia: reindex response with the new total.
 
 ## 3. Agent 1: recommender
 
