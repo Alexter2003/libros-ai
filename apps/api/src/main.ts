@@ -21,7 +21,9 @@ async function bootstrap(): Promise<void> {
     app,
     new DocumentBuilder()
       .setTitle('Libros API')
-      .setDescription('Books and comics app with AI services')
+      .setDescription(
+        'Books and comics app with AI services. Use a bearer token (POST /auth/login) for the app; report endpoints under /reports also accept an X-API-Key header.',
+      )
       .setVersion('0.1.0')
       .addBearerAuth()
       .addApiKey({ type: 'apiKey', name: 'X-API-Key', in: 'header' }, 'api-key')

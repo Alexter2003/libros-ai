@@ -112,3 +112,13 @@ model ChatMessage {
 
   @@index([sessionId, createdAt])
 }
+
+model ApiKey {
+  id         String    @id @default(uuid())
+  name       String
+  keyHash    String    @unique
+  prefix     String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+}

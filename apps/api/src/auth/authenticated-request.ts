@@ -3,4 +3,5 @@ import { UserResponse } from '../users/user.response';
 
 export interface AuthenticatedRequest extends Request {
   user: UserResponse;
+  apiKeyId?: string;
 }

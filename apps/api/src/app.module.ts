@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AiModule } from './ai/ai.module';
+import { ApiKeysModule } from './api-keys/api-keys.module';
 import { AuthModule } from './auth/auth.module';
 import { AgentsModule } from './agents/agents.module';
 import { ChatModule } from './chat/chat.module';
@@ -9,6 +10,7 @@ import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
 import { ItemsModule } from './items/items.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { UsageModule } from './usage/usage.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -25,6 +27,8 @@ import { UsersModule } from './users/users.module';
     AiModule,
     ChatModule,
     AgentsModule,
+    UsageModule,
+    ApiKeysModule,
   ],
   controllers: [HealthController],
   providers: [HealthService],
