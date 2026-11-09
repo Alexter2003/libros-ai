@@ -8,7 +8,7 @@ import {
 
 describe('token calculation', () => {
   it('adds input and output tokens', () => {
-    expect(totalTokens({ inputTokens: 12, outputTokens: 30 })).toBe(43);
+    expect(totalTokens({ inputTokens: 12, outputTokens: 30 })).toBe(42);
   });
 
   it('sums several usage events', () => {
