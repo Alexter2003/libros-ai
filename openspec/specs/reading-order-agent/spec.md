@@ -1,7 +1,7 @@
 # reading-order-agent Specification
 
 ## Purpose
-Tell the user in which order to read the items of a series in the catalog, with the order computed deterministically and a short explanation written by the model.
+Tell the user in which order to read the items of a series in the catalog: the model finds the series and proposes the order with an explanation through catalog tools, and the code validates it and falls back to a deterministic order.
 
 ## Requirements
 

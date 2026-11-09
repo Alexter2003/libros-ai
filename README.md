@@ -210,10 +210,19 @@ Each item has a 1024-dimension Titan Text Embeddings v2 vector (`Item.embedding`
 
 ### Agents
 
-Both agents follow the pattern *retrieve, constrain, generate*: the model writes text, but the code decides which data is valid.
+Both agents are tool-using agents. The model receives a small set of catalog tools and decides which to call, in which order and when to stop; every model call goes through the AI gateway, so the service switch, the token limit and the usage recording apply at each step. A request makes between 2 and 5 model calls (limit: 5), so it consumes more tokens than a chat question.
 
-- **Recommender** (`POST /agents/recommend`): retrieves the 8 most similar items, asks the model to pick up to 3 with a short reason, discards any id that was not a candidate and falls back to the top candidates if the output is unparseable.
-- **Reading order** (`POST /agents/reading-order`): resolves the series by name, then by title, then by embedding similarity; sorts the volumes in code (issue number, year, title) and asks the model only for a short explanation.
+| Tool | What it does |
+|---|---|
+| `search_catalog` | Searches the catalog by meaning (minimum similarity applies); up to 8 items |
+| `get_item` | Reads one item with its synopsis |
+| `find_series` | Finds series by name, by a title inside them or by similarity |
+| `list_series_volumes` | Lists the volumes of a series with their issue numbers |
+
+- **Recommender** (`POST /agents/recommend`): uses `search_catalog` and `get_item` to look for candidates and compare them, then answers with up to 3 recommendations and a reason in Spanish.
+- **Reading order** (`POST /agents/reading-order`): uses `find_series` and `list_series_volumes` to locate the series and its volumes, then proposes the order and explains it.
+
+The model never has the last word on facts. The code discards any recommended id that no tool returned, accepts a proposed reading order only if it contains every volume once and keeps the issue numbers ascending (otherwise it sorts by issue number, year and title), and falls back to deterministic results when the output cannot be parsed or the step limit is reached. A `429` in the middle of a run ends the request; the calls already made stay recorded. Tool inputs and results are treated as untrusted data. The code lives in `apps/api/src/agents/` (`agent-loop.ts`, `catalog-tools.ts` and one service per agent).
 
 ### Usage reports and API keys
 
@@ -241,7 +250,7 @@ pnpm typecheck
 pnpm test
 ```
 
-The API test suite (Vitest, 46 tests) covers token calculation and quotas, the AI gateway, chat persistence and isolation between users, the agents, usage aggregation and API key hashing. Bedrock is mocked, so the suite needs neither AWS nor a database.
+The API test suite (Vitest, 79 tests) covers token calculation and quotas, the AI gateway (text and tool-use), chat persistence and isolation between users, the agent loop, the catalog tools and both agents, usage aggregation and API key hashing. Bedrock is mocked, so the suite needs neither AWS nor a database.
 
 ## Deployment
 
