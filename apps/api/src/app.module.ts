@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AiModule } from './ai/ai.module';
 import { AuthModule } from './auth/auth.module';
+import { ChatModule } from './chat/chat.module';
 import { validateEnv } from './config/env.validation';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
@@ -21,6 +22,7 @@ import { UsersModule } from './users/users.module';
     AuthModule,
     ItemsModule,
     AiModule,
+    ChatModule,
   ],
   controllers: [HealthController],
   providers: [HealthService],

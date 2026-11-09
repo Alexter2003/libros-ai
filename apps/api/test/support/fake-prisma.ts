@@ -14,6 +14,27 @@ export interface UsageRow {
   outputTokens: number;
 }
 
+export interface ChatSessionRow {
+  id: string;
+  userId: string;
+  title: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ChatMessageRow {
+  id: string;
+  sessionId: string;
+  role: 'USER' | 'ASSISTANT';
+  content: string;
+  sources: unknown;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  createdAt: Date;
+}
+
+type MessageInput = Partial<ChatMessageRow> & { role: 'USER' | 'ASSISTANT'; content: string; createdAt: Date };
+
 interface NameFilter {
   equals: string;
 }
@@ -28,7 +49,10 @@ export class FakePrisma {
   users = new Map<string, UserRow>();
   services: AiService[] = [];
   usage: UsageRow[] = [];
+  sessions: ChatSessionRow[] = [];
+  messages: ChatMessageRow[] = [];
   private nextId = 1;
+  private clock = 0;
 
   user = {
     findUnique: ({ where }: { where: { id: string } }): Promise<UserRow | null> =>
@@ -89,12 +113,93 @@ export class FakePrisma {
     },
   };
 
+  chatSession = {
+    create: ({
+      data,
+    }: {
+      data: { userId: string; title: string; messages: { create: MessageInput[] } };
+    }): Promise<ChatSessionRow> => {
+      const stamp = this.tick();
+      const session: ChatSessionRow = {
+        id: `session-${this.nextId++}`,
+        userId: data.userId,
+        title: data.title,
+        createdAt: stamp,
+        updatedAt: stamp,
+      };
+      this.sessions.push(session);
+      this.addMessages(session.id, data.messages.create);
+      return Promise.resolve(session);
+    },
+    update: ({
+      where,
+      data,
+    }: {
+      where: { id: string };
+      data: { messages: { create: MessageInput[] } };
+    }): Promise<ChatSessionRow> => {
+      const session = this.sessions.find((candidate) => candidate.id === where.id);
+      if (!session) return Promise.reject(new Error('missing session'));
+      session.updatedAt = this.tick();
+      this.addMessages(session.id, data.messages.create);
+      return Promise.resolve(session);
+    },
+    findFirst: ({
+      where,
+      include,
+    }: {
+      where: { id: string; userId: string };
+      include?: unknown;
+    }): Promise<(ChatSessionRow & { messages?: ChatMessageRow[] }) | null> => {
+      const session = this.sessions.find((row) => row.id === where.id && row.userId === where.userId);
+      if (!session) return Promise.resolve(null);
+      if (!include) return Promise.resolve(session);
+      const messages = this.messages
+        .filter((message) => message.sessionId === session.id)
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      return Promise.resolve({ ...session, messages });
+    },
+    findMany: ({ where }: { where: { userId: string } }): Promise<ChatSessionRow[]> =>
+      Promise.resolve(
+        this.sessions
+          .filter((row) => row.userId === where.userId)
+          .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()),
+      ),
+  };
+
+  chatMessage = {
+    findMany: ({ where, take }: { where: { sessionId: string }; take: number }): Promise<ChatMessageRow[]> =>
+      Promise.resolve(
+        this.messages
+          .filter((row) => row.sessionId === where.sessionId)
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(0, take),
+      ),
+  };
+
   asPrisma(): PrismaService {
     return this as unknown as PrismaService;
   }
 
   addUser(id: string, tokenLimit: number | null): void {
     this.users.set(id, { id, tokenLimit });
+  }
+
+  private tick(): Date {
+    return new Date(Date.UTC(2026, 0, 1) + this.clock++ * 1000);
+  }
+
+  private addMessages(sessionId: string, inputs: MessageInput[]): void {
+    for (const input of inputs) {
+      this.messages.push({
+        id: `message-${this.nextId++}`,
+        sessionId,
+        sources: null,
+        inputTokens: null,
+        outputTokens: null,
+        ...input,
+      });
+    }
   }
 
   private matches(service: AiService, where?: ServiceWhere): boolean {
