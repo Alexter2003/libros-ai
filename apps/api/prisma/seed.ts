@@ -5,6 +5,9 @@ import { SEED_ITEMS, coverSlug } from './seed-data';
 
 const prisma = new PrismaClient();
 
+const DEFAULT_AI_SERVICE = 'Nova Lite';
+const DEFAULT_MODEL_ID = 'us.amazon.nova-lite-v1:0';
+
 function loadCoverSlugs(): Set<string> {
   const manifest = join(__dirname, 'covers.json');
   if (!existsSync(manifest)) return new Set();
@@ -41,6 +44,19 @@ async function main(): Promise<void> {
 
   const total = await prisma.item.count();
   console.log(`Seed finished: ${created} created, ${updated} updated, ${total} items in catalog.`);
+
+  await prisma.aiService.upsert({
+    where: { name: DEFAULT_AI_SERVICE },
+    create: {
+      name: DEFAULT_AI_SERVICE,
+      modelId: process.env.BEDROCK_MODEL_ID || DEFAULT_MODEL_ID,
+      provider: 'bedrock',
+      maxOutputTokens: 1024,
+      temperature: 0.3,
+    },
+    update: {},
+  });
+  console.log(`AI services in catalog: ${await prisma.aiService.count()}.`);
 }
 
 main()

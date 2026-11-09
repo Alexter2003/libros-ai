@@ -9,9 +9,11 @@
     "typecheck": "prisma generate && tsc --noEmit",
     "prisma:migrate": "dotenv -e ../../.env -- prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts"
+    "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1164.0",
     "@nestjs/common": "^12.4.0",
     "@nestjs/config": "^12.1.1",
     "@nestjs/core": "^12.4.0",
@@ -32,7 +34,8 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.6",
     "dotenv-cli": "^11.1.0",
-    "tsx": "^4.23.15"
+    "tsx": "^4.23.15",
+    "vitest": "^5.1.0"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

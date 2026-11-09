@@ -21,8 +21,11 @@ model User {
   passwordHash String
   role         Role     @default(USER)
   active       Boolean  @default(true)
+  tokenLimit   Int?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  usageEvents UsageEvent[]
 }
 
 enum Kind {
@@ -46,4 +49,32 @@ model Item {
   updatedAt   DateTime @updatedAt
 
   @@unique([title, author, kind])
+}
+
+model AiService {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  modelId         String
+  provider        String   @default("bedrock")
+  enabled         Boolean  @default(true)
+  maxOutputTokens Int?
+  temperature     Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  usageEvents UsageEvent[]
+}
+
+model UsageEvent {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceId    String?
+  service      AiService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  serviceName  String
+  inputTokens  Int
+  outputTokens Int
+  createdAt    DateTime   @default(now())
+
+  @@index([userId, createdAt])
 }

@@ -17,6 +17,9 @@ export class UserResponse {
   @ApiProperty()
   active!: boolean;
 
+  @ApiProperty({ type: Number, nullable: true })
+  tokenLimit!: number | null;
+
   @ApiProperty()
   createdAt!: Date;
 }
@@ -28,6 +31,7 @@ export function toUserResponse(user: User): UserResponse {
     name: user.name,
     role: user.role,
     active: user.active,
+    tokenLimit: user.tokenLimit,
     createdAt: user.createdAt,
   };
 }

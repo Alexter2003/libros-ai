@@ -3,6 +3,7 @@ import {
   IsEmail,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Max,
   MaxLength,
@@ -40,6 +41,22 @@ export class EnvironmentVariables {
   @MinLength(8)
   @MaxLength(72)
   ADMIN_PASSWORD!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  AWS_REGION: string = 'us-east-2';
+
+  @IsOptional()
+  @IsString()
+  AWS_ACCESS_KEY_ID?: string;
+
+  @IsOptional()
+  @IsString()
+  AWS_SECRET_ACCESS_KEY?: string;
+
+  @IsOptional()
+  @IsString()
+  BEDROCK_MODEL_ID?: string;
 }
 
 export function validateEnv(config: Record<string, unknown>): EnvironmentVariables {

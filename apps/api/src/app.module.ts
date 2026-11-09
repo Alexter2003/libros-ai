@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { AiModule } from './ai/ai.module';
 import { AuthModule } from './auth/auth.module';
 import { validateEnv } from './config/env.validation';
 import { HealthController } from './health/health.controller';
@@ -19,6 +20,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     AuthModule,
     ItemsModule,
+    AiModule,
   ],
   controllers: [HealthController],
   providers: [HealthService],
