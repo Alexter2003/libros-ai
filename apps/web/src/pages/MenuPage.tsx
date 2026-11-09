@@ -42,6 +42,14 @@ export function MenuPage() {
             <Button>Ver catálogo</Button>
           </Link>
         </Card>
+        <Card>
+          <Eyebrow>Asistente</Eyebrow>
+          <p className="mt-4 text-heading font-medium">Chat del catálogo</p>
+          <p className="mt-2 text-body-sm text-ash">Pregunta por libros y cómics y consulta las fuentes de cada respuesta.</p>
+          <Link to="/chat" className="mt-6 inline-block">
+            <Button>Abrir chat</Button>
+          </Link>
+        </Card>
         {user?.role === 'ADMIN' && (
           <>
             <Card>

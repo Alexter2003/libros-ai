@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Cover } from '../components/Cover';
@@ -18,8 +19,10 @@ const KIND_LABEL: Record<Kind, string> = { BOOK: 'Libro', COMIC: 'Cómic' };
 const PAGE_SIZE = 12;
 
 export function CatalogPage() {
-  const [search, setSearch] = useState('');
-  const [query, setQuery] = useState('');
+  const [params] = useSearchParams();
+  const initialQuery = params.get('q')?.trim() ?? '';
+  const [search, setSearch] = useState(initialQuery);
+  const [query, setQuery] = useState(initialQuery);
   const [kind, setKind] = useState<KindFilter>('ALL');
   const [page, setPage] = useState(1);
   const [result, setResult] = useState<ItemPage | null>(null);

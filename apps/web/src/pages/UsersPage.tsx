@@ -13,9 +13,19 @@ interface FormState {
   name: string;
   password: string;
   role: Role;
+  unlimited: boolean;
+  tokenLimit: string;
 }
 
-const emptyForm: FormState = { id: null, email: '', name: '', password: '', role: 'USER' };
+const emptyForm: FormState = {
+  id: null,
+  email: '',
+  name: '',
+  password: '',
+  role: 'USER',
+  unlimited: true,
+  tokenLimit: '',
+};
 
 function errorText(error: unknown): string {
   return error instanceof ApiError ? error.message : 'No se pudo conectar con la API';
@@ -45,6 +55,10 @@ export function UsersPage() {
         const body: Record<string, unknown> = { name: form.name, role: form.role };
         if (form.password) body.password = form.password;
         await request<User>(`/users/${form.id}`, { method: 'PATCH', body });
+        await request<User>(`/users/${form.id}/token-limit`, {
+          method: 'PATCH',
+          body: { tokenLimit: form.unlimited ? null : Number(form.tokenLimit) },
+        });
       } else {
         await request<User>('/users', {
           method: 'POST',
@@ -152,6 +166,30 @@ export function UsersPage() {
                 <option value="ADMIN">ADMIN</option>
               </select>
             </label>
+            {form.id && (
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-body-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.unlimited}
+                    onChange={(event) => setForm({ ...form, unlimited: event.target.checked })}
+                  />
+                  Sin límite
+                </label>
+                {!form.unlimited && (
+                  <Input
+                    label="Límite de tokens"
+                    name="tokenLimit"
+                    type="number"
+                    min={0}
+                    step={1}
+                    required
+                    value={form.tokenLimit}
+                    onChange={(event) => setForm({ ...form, tokenLimit: event.target.value })}
+                  />
+                )}
+              </div>
+            )}
             {formError && (
               <p role="alert" className="text-body-sm text-ash">
                 {formError}
@@ -175,6 +213,7 @@ export function UsersPage() {
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Rol</th>
               <th className="px-4 py-3">Estado</th>
+              <th className="px-4 py-3">Límite de tokens</th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
@@ -187,13 +226,22 @@ export function UsersPage() {
                   <td className="px-4 py-3 text-ash">{row.email}</td>
                   <td className="px-4 py-3 font-jetbrains-mono text-caption">{row.role}</td>
                   <td className="px-4 py-3 text-ash">{row.active ? 'Activo' : 'Inactivo'}</td>
+                  <td className="px-4 py-3 text-ash">{row.tokenLimit === null ? 'Sin límite' : row.tokenLimit}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="ghost"
                         onClick={() => {
                           setFormError(null);
-                          setForm({ id: row.id, email: row.email, name: row.name, password: '', role: row.role });
+                          setForm({
+                            id: row.id,
+                            email: row.email,
+                            name: row.name,
+                            password: '',
+                            role: row.role,
+                            unlimited: row.tokenLimit === null,
+                            tokenLimit: row.tokenLimit === null ? '' : String(row.tokenLimit),
+                          });
                         }}
                       >
                         Editar

@@ -10,6 +10,7 @@ export interface User {
   name: string;
   role: Role;
   active: boolean;
+  tokenLimit: number | null;
   createdAt: string;
 }
 
@@ -118,4 +119,54 @@ export async function request<T>(
 
 export function fetchHealth(): Promise<HealthReport> {
   return request<HealthReport>('/health', { auth: false });
+}
+
+export interface AiServiceSummary {
+  id: string;
+  name: string;
+  enabled: boolean;
+}
+
+export interface QuotaStatus {
+  tokenLimit: number | null;
+  tokensUsed: number;
+  tokensRemaining: number | null;
+}
+
+export interface ChatSource {
+  id: string;
+  title: string;
+  author: string;
+  kind: Kind;
+  score: number;
+}
+
+export interface ChatAnswer {
+  sessionId: string;
+  answer: string;
+  grounded: boolean;
+  sources: ChatSource[];
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export interface ChatSessionSummary {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'USER' | 'ASSISTANT';
+  content: string;
+  sources: ChatSource[] | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  createdAt: string;
+}
+
+export interface ChatSessionDetail extends ChatSessionSummary {
+  messages: ChatMessage[];
 }
