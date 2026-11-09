@@ -80,3 +80,4 @@ The system SHALL let an administrator read the full messages of any user's sessi
 #### Scenario: API key rejected
 - **WHEN** a client with a valid API key requests a session's messages
 - **THEN** the response is 401
+

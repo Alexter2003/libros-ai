@@ -46,3 +46,4 @@ The system SHALL accept an `X-API-Key` header as credential only on report endpo
 #### Scenario: Unknown key
 - **WHEN** a client sends an unknown key to a report endpoint
 - **THEN** the response is 401
+

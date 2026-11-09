@@ -17,3 +17,4 @@ The system SHALL serve at `/docs` an OpenAPI document that lists every endpoint 
 #### Scenario: Security schemes
 - **WHEN** a person opens `/docs`
 - **THEN** they can authorize with a bearer token or an API key and call report endpoints from the page
+
