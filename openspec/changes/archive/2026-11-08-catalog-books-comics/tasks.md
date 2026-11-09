@@ -27,8 +27,8 @@
 ## 5. Deployment and documentation
 
 - [x] 5.1 Update the README with the catalog endpoints, the `db:seed` command (local and `docker compose exec api pnpm db:seed` on the server), the note that seeding refreshes demo rows, how to re-run the cover script, and a visible notice that the covers are copyrighted images used for academic purposes only. Manual check: the documented commands run as written and the notice appears in the rendered README on GitHub.
-- [ ] 5.2 Push to `main` and confirm the pipeline is green, then run the seed on Lightsail from `/opt/libros`. Manual check: the deploy workflow succeeds and `GET /items` on `https://apilibros.alexvyumes-dev.com` returns the seeded titles with a token. Captura de evidencia: green workflow run and the seed output on the server.
-- [ ] 5.3 Verify on production: log in on `https://libros.alexvyumes-dev.com`, browse and search the catalog as a USER, then manage items as the admin. Manual check: the full flow works over HTTPS. Captura de evidencia: production catalog and admin management screens.
+- [x] 5.2 Push to `main` and confirm the pipeline is green, then run the seed on Lightsail from `/opt/libros`. Manual check: the deploy workflow succeeds and `GET /items` on `https://apilibros.alexvyumes-dev.com` returns the seeded titles with a token. Captura de evidencia: green workflow run and the seed output on the server.
+- [x] 5.3 Verify on production: log in on `https://libros.alexvyumes-dev.com`, browse and search the catalog as a USER, then manage items as the admin. Manual check: the full flow works over HTTPS. Captura de evidencia: production catalog and admin management screens.
 
 ## Workflow follow-up
 
