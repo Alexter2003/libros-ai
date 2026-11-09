@@ -22,13 +22,13 @@ pnpm --filter api prisma:migrate   # first run: applies migrations (enables pgve
 | `pnpm build` | builds both apps |
 | `pnpm typecheck` | TypeScript strict checks |
 | `pnpm lint` | ESLint (explicit `any` is an error) |
-| `pnpm test` | runs tests of every app that defines them |
+| `pnpm test` | runs tests of every app that defines them (Vitest, Bedrock mocked) |
 | `pnpm --filter api db:seed` | loads the demo catalog (idempotent) |
 | `pnpm covers:fetch` | downloads missing demo covers (add `--force` to redo all) |
 
 ## Production
 
-`deploy/docker-compose.yml` runs Postgres (pgvector), the API and a Caddy image that serves the web build and proxies the API. The GitHub Actions workflow (`.github/workflows/ci.yml`) checks both apps and deploys to Lightsail over SSH only when checks pass. Server setup: `/opt/libros` with `docker-compose.yml` and a `.env` containing `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` `WEB_ORIGIN=https://libros.alexvyumes-dev.com`, `JWT_SECRET` (32+ chars, `openssl rand -hex 32`), `JWT_EXPIRES_IN` (e.g. `8h`), `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
+`deploy/docker-compose.yml` runs Postgres (pgvector), the API and a Caddy image that serves the web build and proxies the API. The GitHub Actions workflow (`.github/workflows/ci.yml`) checks both apps and deploys to Lightsail over SSH only when checks pass. Server setup: `/opt/libros` with `docker-compose.yml` and a `.env` containing `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` `WEB_ORIGIN=https://libros.alexvyumes-dev.com`, `JWT_SECRET` (32+ chars, `openssl rand -hex 32`), `JWT_EXPIRES_IN` (e.g. `8h`), `ADMIN_EMAIL` and `ADMIN_PASSWORD`, plus the AI variables described in the AI gateway section.
 
 ## Authentication
 
@@ -53,5 +53,39 @@ Users log in with email and password and receive a JWT access token (`Authorizat
 Demo covers are WebP files in `apps/web/public/covers/`, listed in `apps/api/prisma/covers.json`, so the app never depends on a third-party host. Items without a cover, or whose image fails to load, show a generated placeholder. To refresh them, run `pnpm covers:fetch` (Open Library first, Google Books as fallback) and review the images.
 
 > **Copyright notice:** the cover images are copyrighted by their respective publishers and are included for academic purposes only (university course project). They are not licensed for any commercial use.
+
+## AI gateway
+
+Every model call goes through one gateway that checks the service, checks the user's token quota, calls Amazon Bedrock (Converse API) and stores the tokens reported by the model.
+
+| Endpoint | Access | Notes |
+|---|---|---|
+| `GET /ai-services`, `GET /ai-services/:id` | any user | users see enabled services only; admins see all |
+| `POST /ai-services`, `PATCH /ai-services/:id`, `DELETE /ai-services/:id` | admin | `enabled` turns a service on or off; `409` on duplicate name; usage history survives deletion |
+| `PATCH /users/:id/token-limit` | admin | `{ "tokenLimit": 5000 }` or `null` for unlimited; total of input plus output tokens |
+| `POST /ai/generate` | any user | `{ serviceId, prompt }`; `422` disabled service, `429` limit reached, `503` provider error |
+| `GET /ai/quota` | any user | own limit, tokens used and tokens remaining |
+
+The check runs before the call and usage is stored after it, so a user can exceed the limit by at most one call. `pnpm --filter api db:seed` also creates the default `Nova Lite` service (existing services are never overwritten).
+
+### AWS configuration
+
+Set these in `.env` (and in `/opt/libros/.env` on the server, owner `deploy`, mode 600): `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` and `BEDROCK_MODEL_ID` (model id for the seeded service). Use an IAM user, never root keys, with only this permission on the model you use (replace `ACCOUNT_ID`, the model id and the inference profile id with yours):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": ["bedrock:InvokeModel"],
+    "Resource": [
+      "arn:aws:bedrock:*::foundation-model/MODEL_ID",
+      "arn:aws:bedrock:REGION:ACCOUNT_ID:inference-profile/PROFILE_ID"
+    ]
+  }]
+}
+```
+
+The model must also be available to the account in the Bedrock console.
 
 Design reference: `DESIGN.md`.
