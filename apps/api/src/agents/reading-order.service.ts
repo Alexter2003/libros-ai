@@ -1,13 +1,17 @@
-import { Injectable, UnprocessableEntityException } from '@nestjs/common';
-import { AiServicesService } from '../ai/ai-services/ai-services.service';
-import { EmbeddingsService } from '../ai/embeddings/embeddings.service';
-import { GatewayService } from '../ai/gateway/gateway.service';
-import { TokenQuotaService } from '../ai/token-quota/token-quota.service';
-import { MIN_SIMILARITY } from '../chat/rag.constants';
-import { PrismaService } from '../prisma/prisma.service';
-import { NO_SERIES_EXPLANATION } from './agents.constants';
-import { ReadingOrderDto } from './dto/reading-order.dto';
-import { SeriesEntry, buildReadingOrderPrompt, sortReadingOrder } from './reading-order';
+import { Injectable, UnprocessableEntityException } from "@nestjs/common";
+import { AiServicesService } from "../ai/ai-services/ai-services.service";
+import { EmbeddingsService } from "../ai/embeddings/embeddings.service";
+import { GatewayService } from "../ai/gateway/gateway.service";
+import { TokenQuotaService } from "../ai/token-quota/token-quota.service";
+import { MIN_SIMILARITY } from "../chat/rag.constants";
+import { PrismaService } from "../prisma/prisma.service";
+import { NO_SERIES_EXPLANATION } from "./agents.constants";
+import { ReadingOrderDto } from "./dto/reading-order.dto";
+import {
+  SeriesEntry,
+  buildReadingOrderPrompt,
+  sortReadingOrder,
+} from "./reading-order";
 
 export interface ReadingOrderItem extends SeriesEntry {
   position: number;
@@ -21,7 +25,14 @@ export interface ReadingOrderResult {
   outputTokens: number;
 }
 
-const ENTRY_SELECT = { id: true, title: true, author: true, kind: true, year: true, issueNumber: true } as const;
+const ENTRY_SELECT = {
+  id: true,
+  title: true,
+  author: true,
+  kind: true,
+  year: true,
+  issueNumber: true,
+} as const;
 
 @Injectable()
 export class ReadingOrderService {
@@ -33,16 +44,25 @@ export class ReadingOrderService {
     private readonly gateway: GatewayService,
   ) {}
 
-  async order(userId: string, dto: ReadingOrderDto): Promise<ReadingOrderResult> {
+  async order(
+    userId: string,
+    dto: ReadingOrderDto,
+  ): Promise<ReadingOrderResult> {
     const service = await this.services.getOrThrow(dto.serviceId);
     if (!service.enabled) {
-      throw new UnprocessableEntityException('AI service is disabled');
+      throw new UnprocessableEntityException("AI service is disabled");
     }
     await this.quota.assertWithinQuota(userId);
 
     const resolved = await this.resolve(userId, dto.query);
     if (!resolved) {
-      return { series: null, items: [], explanation: NO_SERIES_EXPLANATION, inputTokens: 0, outputTokens: 0 };
+      return {
+        series: null,
+        items: [],
+        explanation: NO_SERIES_EXPLANATION,
+        inputTokens: 0,
+        outputTokens: 0,
+      };
     }
 
     const ordered = sortReadingOrder(resolved.entries);
@@ -59,23 +79,26 @@ export class ReadingOrderService {
     };
   }
 
-  private async resolve(userId: string, query: string): Promise<{ name: string; entries: SeriesEntry[] } | null> {
+  private async resolve(
+    userId: string,
+    query: string,
+  ): Promise<{ name: string; entries: SeriesEntry[] } | null> {
     const exact = await this.prisma.item.findFirst({
-      where: { series: { equals: query, mode: 'insensitive' } },
+      where: { series: { equals: query, mode: "insensitive" } },
       select: { series: true },
     });
     const partial =
       exact ??
       (await this.prisma.item.findFirst({
-        where: { series: { contains: query, mode: 'insensitive' } },
-        orderBy: { series: 'asc' },
+        where: { series: { contains: query, mode: "insensitive" } },
+        orderBy: { series: "asc" },
         select: { series: true },
       }));
     if (partial?.series) return this.loadSeries(partial.series);
 
     const byTitle = await this.prisma.item.findFirst({
-      where: { title: { contains: query, mode: 'insensitive' } },
-      orderBy: { title: 'asc' },
+      where: { title: { contains: query, mode: "insensitive" } },
+      orderBy: { title: "asc" },
       select: { ...ENTRY_SELECT, series: true },
     });
     if (byTitle) return this.fromItem(byTitle);
@@ -86,7 +109,16 @@ export class ReadingOrderService {
     if (best.series) return this.loadSeries(best.series);
     return {
       name: best.title,
-      entries: [{ id: best.id, title: best.title, author: best.author, kind: best.kind, year: best.year, issueNumber: null }],
+      entries: [
+        {
+          id: best.id,
+          title: best.title,
+          author: best.author,
+          kind: best.kind,
+          year: best.year,
+          issueNumber: null,
+        },
+      ],
     };
   }
 
@@ -94,12 +126,24 @@ export class ReadingOrderService {
     item: SeriesEntry & { series: string | null },
   ): Promise<{ name: string; entries: SeriesEntry[] }> {
     if (item.series) return this.loadSeries(item.series);
-    const { series: _series, ...entry } = item;
+    const entry: SeriesEntry = {
+      id: item.id,
+      title: item.title,
+      author: item.author,
+      kind: item.kind,
+      year: item.year,
+      issueNumber: item.issueNumber,
+    };
     return { name: item.title, entries: [entry] };
   }
 
-  private async loadSeries(name: string): Promise<{ name: string; entries: SeriesEntry[] }> {
-    const entries = await this.prisma.item.findMany({ where: { series: name }, select: ENTRY_SELECT });
+  private async loadSeries(
+    name: string,
+  ): Promise<{ name: string; entries: SeriesEntry[] }> {
+    const entries = await this.prisma.item.findMany({
+      where: { series: name },
+      select: ENTRY_SELECT,
+    });
     return { name, entries };
   }
 }
