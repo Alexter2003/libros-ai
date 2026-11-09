@@ -18,6 +18,9 @@ export function AppShell() {
             <Link to="/chat" className="text-ash hover:text-bone">
               Chat
             </Link>
+            <Link to="/agents" className="text-ash hover:text-bone">
+              Agentes
+            </Link>
             {user?.role === 'ADMIN' && (
               <>
                 <Link to="/admin/items" className="text-ash hover:text-bone">

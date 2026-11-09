@@ -50,6 +50,14 @@ export function MenuPage() {
             <Button>Abrir chat</Button>
           </Link>
         </Card>
+        <Card>
+          <Eyebrow>Agentes</Eyebrow>
+          <p className="mt-4 text-heading font-medium">Recomendador y orden de lectura</p>
+          <p className="mt-2 text-body-sm text-ash">Recibe recomendaciones a tu gusto y descubre en qué orden leer una serie.</p>
+          <Link to="/agents" className="mt-6 inline-block">
+            <Button>Abrir agentes</Button>
+          </Link>
+        </Card>
         {user?.role === 'ADMIN' && (
           <>
             <Card>

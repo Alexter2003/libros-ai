@@ -170,3 +170,35 @@ export interface ChatMessage {
 export interface ChatSessionDetail extends ChatSessionSummary {
   messages: ChatMessage[];
 }
+
+export interface AgentRecommendation {
+  id: string;
+  title: string;
+  author: string;
+  kind: Kind;
+  reason: string;
+}
+
+export interface RecommendResult {
+  recommendations: AgentRecommendation[];
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export interface ReadingOrderItem {
+  position: number;
+  id: string;
+  title: string;
+  author: string;
+  kind: Kind;
+  year: number;
+  issueNumber: number | null;
+}
+
+export interface ReadingOrderResult {
+  series: string | null;
+  items: ReadingOrderItem[];
+  explanation: string;
+  inputTokens: number;
+  outputTokens: number;
+}
